@@ -1,4 +1,5 @@
-# Stack Odoo untuk VPS. Dipakai DUA kali di VPS yang sama dengan project name berbeda:
+# Stack Odoo untuk VPS (demo = satu stack `staging`). File ini juga bisa dipakai untuk stack kedua (prod)
+# di VPS yang sama dengan project name berbeda:
 #   docker compose -p batik-staging --env-file env.staging -f deploy/compose.vps.yml up -d
 #   docker compose -p batik-prod    --env-file env.prod    -f deploy/compose.vps.yml up -d
 # Isolasi: network, volume (DB + filestore), port, dan kredensial terpisah per project.
@@ -51,6 +52,18 @@ services:
       - ../data:/mnt/data:ro
     mem_limit: ${ODOO_MEM_LIMIT:-1200m}
     command: ["odoo", "--db_name=${ODOO_DB}"]
+
+  # Akses publik lewat Cloudflare Tunnel (gratis). Hostname & rute diatur di dashboard Cloudflare
+  # (Public Hostname -> http://odoo:8069), tanpa membuka port di VPS. Aktif bila COMPOSE_PROFILES=tunnel.
+  cloudflared:
+    profiles: ["tunnel"]
+    image: cloudflare/cloudflared:2025.8.1
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on:
+      - odoo
 
 volumes:
   pgdata:

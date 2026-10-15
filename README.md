@@ -49,10 +49,10 @@ data/coa_retail_batik.csv          CoA retail overlay (edit CSV → jalankan ula
 custom_addons/batik_id_tax/        NSFP / kode transaksi / DPP nilai lain / NPWP-NIK pembeli / faktur cetak
 custom_addons/batik_id_coretax/    impor NSFP, ekspor Excel/XML Coretax (XML EKSPERIMENTAL, belum diverifikasi)
 custom_addons/batik_id_payroll/    karyawan, PPh 21 TER, BPJS, jurnal gaji
-deploy/                            compose.vps.yml, deploy.sh, ops (backup/restore/refresh), contoh config tunnel
-docs/VPS_STAGING_PROD.md           staging + prod di satu VPS
+deploy/                            compose.vps.yml (+cloudflared), deploy.sh, ops (backup/restore)
+docs/VPS_STAGING_PROD.md           demo di VPS (satu stack) + subdomain Cloudflare
 scripts/snapshot/                  build_snapshot.py + template.html → situs statis
-.github/workflows/                 ci.yml, deploy-vps.yml (staging/prod), deploy-pages.yml (manual)
+.github/workflows/                 ci.yml, deploy-vps.yml (push main -> VPS), deploy-pages.yml (manual)
 docs/                              TAX_ACCOUNTING_ID.md, CLOUDFLARE.md, DEMO_SCRIPT.md
 ```
 

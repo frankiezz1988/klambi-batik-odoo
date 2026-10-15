@@ -1,13 +1,10 @@
-name: Deploy ke VPS (staging / prod)
+name: Deploy demo ke VPS
 
-# staging : otomatis setiap push ke branch `staging`
-# prod    : otomatis saat tag `v*` dibuat, DAN job menunggu persetujuan manual karena memakai
-#           GitHub Environment `production` (set "Required reviewers" di Settings > Environments).
+# Demo = satu stack `staging` di VPS: otomatis setiap push ke `main` (atau manual lewat workflow_dispatch).
 # Kode tetap ditulis di laptop (repo lokal). Laptop tidak perlu menjalankan Docker/Odoo.
 on:
   push:
-    branches: [staging]
-    tags: ["v*"]
+    branches: [main]
   workflow_dispatch:
     inputs:
       target:
