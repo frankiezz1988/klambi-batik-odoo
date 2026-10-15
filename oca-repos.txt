@@ -6,3 +6,5 @@ account-analytic
 account-reconcile
 server-tools
 mis-builder
+reporting-engine
+bank-statement-import

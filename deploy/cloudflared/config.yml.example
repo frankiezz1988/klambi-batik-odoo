@@ -1,0 +1,20 @@
+# Cloudflare Tunnel (gratis) untuk VPS: satu tunnel, dua hostname. Jalankan cloudflared di host (systemd)
+# atau container network_mode: host agar bisa menjangkau 127.0.0.1.
+# Buat tunnel:  cloudflared tunnel create batik   -> isi tunnel/credentials di bawah.
+# Lalu:         cloudflared tunnel route dns batik odoo.contoh.com
+#               cloudflared tunnel route dns batik staging.contoh.com
+tunnel: <TUNNEL_ID>
+credentials-file: /etc/cloudflared/<TUNNEL_ID>.json
+ingress:
+  # PROD (workers=2 -> websocket/longpolling di port gevent 8072)
+  - hostname: odoo.contoh.com
+    path: ^/websocket
+    service: http://127.0.0.1:8072
+  - hostname: odoo.contoh.com
+    service: http://127.0.0.1:8069
+  # STAGING (workers=0 -> semua lewat 18069)
+  - hostname: staging.contoh.com
+    service: http://127.0.0.1:18069
+  - service: http_status:404
+# Sangat disarankan: pasang Cloudflare Access (Zero Trust, gratis <=50 user) di staging.contoh.com
+# supaya staging tidak terbuka publik.

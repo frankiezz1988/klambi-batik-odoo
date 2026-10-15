@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_btk_employee_list" model="ir.ui.view">
+        <field name="name">btk.employee.list</field>
+        <field name="model">btk.employee</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="ptkp"/>
+                <field name="ter_category"/>
+                <field name="basic_salary"/>
+                <field name="allowance"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_btk_employee_form" model="ir.ui.view">
+        <field name="name">btk.employee.form</field>
+        <field name="model">btk.employee</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="nik"/>
+                            <field name="npwp"/>
+                            <field name="join_date"/>
+                        </group>
+                        <group>
+                            <field name="ptkp"/>
+                            <field name="ter_category"/>
+                            <field name="basic_salary"/>
+                            <field name="allowance"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_btk_payroll_run_list" model="ir.ui.view">
+        <field name="name">btk.payroll.run.list</field>
+        <field name="model">btk.payroll.run</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="date"/>
+                <field name="total_gross"/>
+                <field name="total_pph21"/>
+                <field name="total_bpjs"/>
+                <field name="total_net"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_btk_payroll_run_form" model="ir.ui.view">
+        <field name="name">btk.payroll.run.form</field>
+        <field name="model">btk.payroll.run</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_compute" string="Hitung" type="object" class="btn-primary"
+                            invisible="state == 'posted'"/>
+                    <button name="action_post" string="Posting Jurnal" type="object" class="btn-primary"
+                            invisible="state != 'computed'"/>
+                    <button name="action_draft" string="Kembali ke Draft" type="object"
+                            invisible="state != 'posted'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,computed,posted"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-warning" role="alert" invisible="not warning">
+                        <field name="warning" nolabel="1"/>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="date"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="move_id"/>
+                        </group>
+                        <group>
+                            <field name="total_gross"/>
+                            <field name="total_pph21"/>
+                            <field name="total_bpjs"/>
+                            <field name="total_net"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Baris Gaji">
+                            <field name="line_ids" readonly="1">
+                                <list>
+                                    <field name="employee_id"/>
+                                    <field name="ter_category"/>
+                                    <field name="gross_salary"/>
+                                    <field name="bpjs_employee"/>
+                                    <field name="bpjs_employer"/>
+                                    <field name="taxable_gross"/>
+                                    <field name="ter_rate"/>
+                                    <field name="pph21"/>
+                                    <field name="net_pay"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Akun &amp; Jurnal">
+                            <group>
+                                <field name="journal_id"/>
+                                <field name="salary_account_id"/>
+                                <field name="bpjs_expense_account_id"/>
+                                <field name="bpjs_payable_account_id"/>
+                                <field name="pph21_account_id"/>
+                                <field name="bank_account_id"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_btk_ter_rate_list" model="ir.ui.view">
+        <field name="name">btk.ter.rate.list</field>
+        <field name="model">btk.ter.rate</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="category"/>
+                <field name="upper_bound"/>
+                <field name="rate"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_btk_employee" model="ir.actions.act_window">
+        <field name="name">Karyawan</field>
+        <field name="res_model">btk.employee</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <record id="action_btk_payroll_run" model="ir.actions.act_window">
+        <field name="name">Proses Gaji</field>
+        <field name="res_model">btk.payroll.run</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <record id="action_btk_ter_rate" model="ir.actions.act_window">
+        <field name="name">Tabel TER PPh 21</field>
+        <field name="res_model">btk.ter.rate</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <menuitem id="menu_btk_payroll" name="Payroll" parent="batik_id_tax.menu_btk_root" sequence="30"/>
+    <menuitem id="menu_btk_payroll_run" name="Proses Gaji" parent="menu_btk_payroll"
+              action="action_btk_payroll_run" sequence="10"/>
+    <menuitem id="menu_btk_employee" name="Karyawan" parent="menu_btk_payroll"
+              action="action_btk_employee" sequence="20"/>
+    <menuitem id="menu_btk_ter_rate" name="Tabel TER PPh 21" parent="menu_btk_payroll"
+              action="action_btk_ter_rate" sequence="30"/>
+</odoo>

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_faktur" model="ir.actions.report">
+        <field name="name">Lembar Pendukung Faktur Pajak (draft)</field>
+        <field name="model">account.move</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">batik_id_tax.report_faktur_document</field>
+        <field name="report_file">batik_id_tax.report_faktur_document</field>
+        <field name="print_report_name">'Lembar-Faktur-%s' % (object.name or 'draft').replace('/', '-')</field>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_faktur_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <div class="page" style="font-size: 12px;">
+                    <h3 style="margin-bottom: 0;">LEMBAR PENDUKUNG FAKTUR PAJAK</h3>
+                    <p style="color: #b3261e; margin-top: 2px;">
+                        Dokumen internal / representasi data. BUKAN Faktur Pajak resmi: faktur resmi diterbitkan dan
+                        ditandatangani melalui Coretax DJP.
+                    </p>
+                    <table class="table table-sm" style="width: 100%;">
+                        <tr><td style="width: 25%;">Penjual</td>
+                            <td><t t-out="o.company_id.name"/> &#8212; NPWP <t t-out="o.company_id.partner_id.btk_npwp or o.company_id.vat"/></td></tr>
+                        <tr><td>Pembeli</td>
+                            <td><t t-out="o.partner_id.name"/> &#8212; NPWP/NIK <t t-out="o.btk_buyer_tin"/></td></tr>
+                        <tr><td>No. Invoice / Ref</td>
+                            <td><t t-out="o.name"/> / <t t-out="o.btk_channel_ref or '-'"/></td></tr>
+                        <tr><td>NSFP / Nomor Faktur</td><td><t t-out="o.btk_nsfp or '(belum terbit)'"/></td></tr>
+                        <tr><td>Tanggal / Kode Transaksi</td>
+                            <td><t t-out="o.invoice_date"/> / <t t-out="o.btk_kode_transaksi"/></td></tr>
+                    </table>
+                    <table class="table table-sm" style="width: 100%;">
+                        <thead>
+                            <tr><th>Barang / Jasa</th><th class="text-end">Qty</th>
+                                <th class="text-end">Harga Satuan</th><th class="text-end">Jumlah (DPP umum)</th></tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="o.invoice_line_ids.filtered(lambda l: l.display_type == 'product')" t-as="l">
+                                <tr>
+                                    <td><t t-out="l.name"/></td>
+                                    <td class="text-end"><t t-out="l.quantity"/></td>
+                                    <td class="text-end"><t t-out="l.price_unit" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td>
+                                    <td class="text-end"><t t-out="l.price_subtotal" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+                    <table class="table table-sm" style="width: 50%; margin-left: 50%;">
+                        <tr><td>Harga Jual / Penggantian</td>
+                            <td class="text-end"><t t-out="o.amount_untaxed" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td></tr>
+                        <tr><td>DPP Nilai Lain (11/12)</td>
+                            <td class="text-end"><t t-out="o.btk_dpp_nilai_lain" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td></tr>
+                        <tr><td>PPN <t t-out="o.btk_ppn_rate"/>% x DPP Nilai Lain</td>
+                            <td class="text-end"><t t-out="o.btk_ppn_faktur" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td></tr>
+                        <tr><td><b>Total</b></td>
+                            <td class="text-end"><b><t t-out="o.amount_total" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></b></td></tr>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

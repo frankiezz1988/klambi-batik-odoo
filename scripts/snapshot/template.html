@@ -107,6 +107,18 @@ const tabs = {
   rows.push(row(["PPN kurang (lebih) bayar",...net,net.reduce((a,b)=>a+b,0)],true));
   return `<h2>Ringkasan pajak bulanan</h2>`+table(["Pos",...M,"Total"],rows)+`<p class="sub">Staging e-Faktur/Coretax: <a href="efaktur_staging.csv">efaktur_staging.csv</a> (${fmt(D.efaktur_count)} invoice). Verifikasi format terhadap template DJP sebelum dipakai.</p>`;
  },
+ "SPT & Bupot": () => {
+  const rows=D.spt_ppn.map(r=>row([mlabel(r.month),r.ppn_keluaran,r.ppn_masukan,r.kurang_lebih]));
+  const sum=k=>D.spt_ppn.reduce((a,r)=>a+r[k],0);
+  rows.push(row(["Total",sum("ppn_keluaran"),sum("ppn_masukan"),sum("kurang_lebih")],true));
+  return `<h2>Lembar kerja SPT Masa PPN (draf rekonsiliasi)</h2>`+table(["Masa","PPN Keluaran","PPN Masukan","Kurang (lebih) bayar"],rows)+
+   `<h2>Lampiran data (CSV)</h2><ul>
+    <li><a href="spt_ppn_keluaran.csv">spt_ppn_keluaran.csv</a> - faktur keluaran (${fmt(D.efaktur_count)} baris)</li>
+    <li><a href="spt_ppn_masukan.csv">spt_ppn_masukan.csv</a> - faktur masukan dari bill pemasok</li>
+    <li><a href="bupot_pph21_23_4ayat2.csv">bupot_pph21_23_4ayat2.csv</a> - PPh 21/23/4(2) yang dipotong (${fmt(D.bupot_count)} baris)</li>
+    <li><a href="pph22_dipungut_marketplace.csv">pph22_dipungut_marketplace.csv</a> - kredit pajak PPh 22 (${fmt(D.pph22_count)} baris; kosong sebelum pemungutan berlaku)</li></ul>
+   <p class="sub">Draf untuk membantu rekonsiliasi dan input ke Coretax. Bukan dokumen pelaporan resmi; format impor DJP harus diverifikasi.</p>`;
+ },
  "Audit Trail": () => D.audit.length ? table(["Waktu","User","Model","Record","Aksi"],D.audit.map(a=>`<tr><td>${a.at}</td><td>${a.user}</td><td>${a.model}</td><td>${a.record}</td><td>${a.method}</td></tr>`))
    : `<div class="banner">Tidak ada data auditlog pada snapshot ini (modul OCA <code>auditlog</code> belum terpasang atau belum ada aktivitas).</div>`
 };

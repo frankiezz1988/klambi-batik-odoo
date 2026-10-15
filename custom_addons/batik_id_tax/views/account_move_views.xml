@@ -13,6 +13,24 @@
                 <field name="btk_channel_ref"
                        invisible="move_type not in ('out_invoice', 'out_refund')"/>
             </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Pajak ID" name="btk_tax"
+                      invisible="move_type not in ('out_invoice', 'out_refund')">
+                    <group>
+                        <group string="Faktur Pajak (DPP Nilai Lain)">
+                            <field name="btk_buyer_tin"/>
+                            <field name="btk_ppn_rate"/>
+                            <field name="amount_untaxed" string="Harga Jual / DPP umum" readonly="1"/>
+                            <field name="btk_dpp_nilai_lain"/>
+                            <field name="btk_ppn_faktur"/>
+                            <field name="btk_ppn_selisih"/>
+                        </group>
+                        <group string="Status Coretax">
+                            <field name="btk_efaktur_exported"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
         </field>
     </record>
 </odoo>

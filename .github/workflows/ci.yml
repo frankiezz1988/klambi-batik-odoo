@@ -16,13 +16,15 @@ jobs:
       - name: Python syntax
         run: python -m py_compile $(git ls-files '*.py')
       - name: Shell syntax
-        run: bash -n scripts/bootstrap.sh && bash -n scripts/fetch_oca.sh
+        run: bash -n scripts/bootstrap.sh scripts/fetch_oca.sh deploy/deploy.sh deploy/ops/*.sh
       - name: XML well-formed
         run: |
           sudo apt-get install -y libxml2-utils >/dev/null
-          xmllint --noout custom_addons/batik_id_tax/views/*.xml
+          xmllint --noout $(find custom_addons -name '*.xml')
       - name: Docker compose config
-        run: cp .env.example .env && docker compose config -q
+        run: |
+          cp .env.example .env && docker compose config -q
+          STACK=staging PG_USER=a PG_PASSWORD=b ODOO_PORT=1 ODOO_GEVENT_PORT=2 ODOO_DB=x docker compose -f deploy/compose.vps.yml config -q
       - name: CoA CSV sanity (kode unik, tipe valid)
         run: |
           python - <<'EOF'

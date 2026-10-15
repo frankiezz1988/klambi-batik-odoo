@@ -1,0 +1,57 @@
+# Stack Odoo untuk VPS. Dipakai DUA kali di VPS yang sama dengan project name berbeda:
+#   docker compose -p batik-staging --env-file env.staging -f deploy/compose.vps.yml up -d
+#   docker compose -p batik-prod    --env-file env.prod    -f deploy/compose.vps.yml up -d
+# Isolasi: network, volume (DB + filestore), port, dan kredensial terpisah per project.
+# Port di-bind ke 127.0.0.1 saja; akses publik hanya lewat Cloudflare Tunnel / reverse proxy.
+name: ${STACK:?STACK harus staging atau prod}
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: ${PG_USER:?}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:?}
+    command: ["postgres", "-c", "shared_buffers=${PG_SHARED_BUFFERS:-128MB}", "-c", "max_connections=60",
+              "-c", "work_mem=8MB", "-c", "fsync=on"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ${BACKUP_DIR:-./backups}:/backups
+    mem_limit: ${DB_MEM_LIMIT:-512m}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  odoo:
+    build:
+      context: ..
+      args:
+        ODOO_VERSION: ${ODOO_VERSION:-19.0}
+    image: batik-odoo:${STACK}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      HOST: db
+      USER: ${PG_USER}
+      PASSWORD: ${PG_PASSWORD}
+    ports:
+      - "127.0.0.1:${ODOO_PORT:?}:8069"
+      - "127.0.0.1:${ODOO_GEVENT_PORT:?}:8072"
+    volumes:
+      - odoo-data:/var/lib/odoo
+      - ../.rendered/${STACK}.odoo.conf:/etc/odoo/odoo.conf:ro
+      - ../addons-oca:/mnt/oca-addons:ro
+      - ../custom_addons:/mnt/custom-addons:ro
+      - ../scripts:/mnt/scripts:ro
+      - ../data:/mnt/data:ro
+    mem_limit: ${ODOO_MEM_LIMIT:-1200m}
+    command: ["odoo", "--db_name=${ODOO_DB}"]
+
+volumes:
+  pgdata:
+  odoo-data:

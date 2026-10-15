@@ -4,12 +4,15 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 [ -f .env ] && set -a && . ./.env && set +a
 DB="${ODOO_DB:-batik_demo}"
-RUN=(docker compose run --rm -T odoo)
+COMPOSE="${COMPOSE_CMD:-${COMPOSE:-docker compose}}"
+RUN=($COMPOSE run --rm -T odoo)
 
 CORE="account,l10n_id,sale_management,purchase,stock,stock_account,stock_landed_costs"
 # OCA + custom: dipasang satu per satu supaya 1 modul bermasalah tidak menggagalkan semuanya
 EXTRA_MODULES=(
   batik_id_tax
+  batik_id_coretax
+  batik_id_payroll
   auditlog
   account_financial_report
   account_tax_balance
@@ -22,9 +25,15 @@ EXTRA_MODULES=(
   account_lock_date_update
   account_fiscal_year
   account_move_template
+  report_xlsx
+  account_asset_management
+  mis_builder_budget
+  account_statement_base
+  account_reconcile_oca
+  account_statement_import_file
 )
 
-docker compose up -d db
+$COMPOSE up -d db
 echo ">> [1/4] base + bahasa Indonesia"
 "${RUN[@]}" odoo -d "$DB" -i base --stop-after-init --without-demo=all --load-language=id_ID || exit 1
 

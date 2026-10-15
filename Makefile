@@ -2,7 +2,8 @@ SHELL := /bin/bash
 -include .env
 export
 DB ?= $(or $(ODOO_DB),batik_demo)
-RUN = docker compose run --rm -T odoo
+COMPOSE ?= docker compose
+RUN = $(COMPOSE) run --rm -T odoo
 
 .PHONY: setup oca build bootstrap provision seed finalize snapshot up down reset logs shell lint
 
@@ -12,7 +13,7 @@ oca:                                   ## clone repo OCA (branch ODOO_VERSION)
 	bash scripts/fetch_oca.sh
 
 build:
-	docker compose build odoo
+	$(COMPOSE) build odoo
 
 bootstrap:                             ## DB + company IDR + modul core + OCA + custom
 	bash scripts/bootstrap.sh

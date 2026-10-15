@@ -22,7 +22,9 @@ PPH23_RATE = 2.0              # jasa (agency live/KOL badan, jasa promosi) - dip
 PPH42_SEWA_RATE = 10.0        # PPh 4(2) final sewa tanah/bangunan - dipotong oleh kita
 PPH_FINAL_UMKM_RATE = 0.5     # PP 55/2022, % omzet bruto bulanan (omzet <= Rp4,8 M)
 PPH22_MARKETPLACE_RATE = 0.5  # PMK 37/2025, dipungut marketplace dari omzet bruto di luar PPN
-PPH22_START = "2026-08-01"    # tanggal mulai pemungutan oleh marketplace
+# PMK 37/2025: semula 1 Agustus 2026, DITUNDA (Menkeu Purbaya; PENG-46/PJ.09/2026, 5 Agt 2026) -> berlaku 1 November 2026.
+# PPh 22 yang telanjur dipungut sejak 1 Agustus wajib dikembalikan marketplace. Ubah tanggal ini bila jadwal berubah lagi.
+PPH22_START = os.environ.get("PPH22_START", "2026-11-01")
 
 # ---- Channel penjualan
 # fees: (label, rate % terhadap DPP/penjualan bersih, akun) - angka ilustrasi, bukan tarif resmi platform

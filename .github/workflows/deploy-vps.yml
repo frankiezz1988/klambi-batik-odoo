@@ -1,0 +1,48 @@
+name: Deploy ke VPS (staging / prod)
+
+# staging : otomatis setiap push ke branch `staging`
+# prod    : otomatis saat tag `v*` dibuat, DAN job menunggu persetujuan manual karena memakai
+#           GitHub Environment `production` (set "Required reviewers" di Settings > Environments).
+# Kode tetap ditulis di laptop (repo lokal). Laptop tidak perlu menjalankan Docker/Odoo.
+on:
+  push:
+    branches: [staging]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "staging atau prod"
+        default: staging
+      ref:
+        description: "branch/tag/sha (kosong = ref workflow)"
+        default: ""
+
+concurrency:
+  group: vps-${{ github.ref_type == 'tag' && 'prod' || inputs.target || 'staging' }}
+  cancel-in-progress: false
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m py_compile $(git ls-files '*.py')
+      - run: bash -n deploy/deploy.sh deploy/ops/*.sh scripts/*.sh
+
+  deploy:
+    needs: lint
+    runs-on: ubuntu-latest
+    environment: ${{ (github.ref_type == 'tag' || inputs.target == 'prod') && 'production' || 'staging' }}
+    env:
+      STACK: ${{ (github.ref_type == 'tag' || inputs.target == 'prod') && 'prod' || 'staging' }}
+      REF: ${{ inputs.ref || github.sha }}
+    steps:
+      - name: Siapkan SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "${{ secrets.VPS_PORT || 22 }}" "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+      - name: Deploy
+        run: |
+          ssh -p "${{ secrets.VPS_PORT || 22 }}" "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
+            "cd /opt/batik/${STACK} && git fetch --all --tags --prune && git checkout -q --detach ${REF} && bash deploy/deploy.sh ${STACK}"

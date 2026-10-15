@@ -52,14 +52,19 @@ class Seeder:
         self.orders = []
         self.stats = defaultdict(int)
         self._stock_col = None
+        self.pending_returns = []
 
     # ------------------------------------------------------------------ master
     def _partner(self, name, company=True, **extra):
         P = self.env["res.partner"]
         p = P.search([("name", "=", name)], limit=1)
         if not p:
-            p = P.create({"name": name, "company_type": "company" if company else "person",
-                          "country_id": self.env.ref("base.id").id, **extra})
+            vals = {"name": name, "company_type": "company" if company else "person",
+                    "country_id": self.env.ref("base.id").id, **extra}
+            if company and "btk_npwp" in P._fields:  # NPWP DUMMY (bukan NPWP nyata)
+                self._npwp_seq = getattr(self, "_npwp_seq", 0) + 1
+                vals.update({"btk_npwp": f"09{self._npwp_seq:014d}", "btk_is_pkp": True})
+            p = P.create(vals)
         return p
 
     def master(self):
@@ -101,6 +106,13 @@ class Seeder:
         lc_fields = {"landed_cost_ok": True} if "landed_cost_ok" in Tmpl._fields else {}
         self.lc_product = Tmpl.search([("name", "=", "Ongkos Angkut Pembelian")], limit=1) or Tmpl.create(
             {"name": "Ongkos Angkut Pembelian", "type": "service", **lc_fields})
+        if "btk.employee" in env:
+            staff = [("Siti Rahayu (Manajer Toko)", "K1", 9_500_000, 1_500_000), ("Budi Santoso (Admin Online)", "TK0", 5_500_000, 500_000),
+                     ("Dewi Lestari (Host Live)", "TK0", 5_000_000, 750_000), ("Agus Pratama (Gudang)", "K2", 4_800_000, 400_000),
+                     ("Rina Kusuma (Kasir)", "TK1", 4_700_000, 300_000), ("Eko Wahyudi (Kasir)", "K0", 4_700_000, 300_000)]
+            for nm, ptkp, basic, allow in staff:
+                if not env["btk.employee"].search([("name", "=", nm)], limit=1):
+                    env["btk.employee"].create({"name": nm, "ptkp": ptkp, "basic_salary": basic, "allowance": allow})
         print(f"Master: {len(self.partners)} partner, {len(self.products)} produk, {len(self.teams)} tim channel")
 
     # ------------------------------------------------------------------ helpers
@@ -156,6 +168,9 @@ class Seeder:
             mv.quantity = mv.product_uom_qty
         picking.with_context(skip_backorder=True, skip_sms=True, skip_immediate=True).button_validate()
         self._redate_stock(picking, when)
+
+    def _has_btk(self):
+        return "btk_nsfp" in self.env["account.move"]._fields
 
     def _nsfp(self, d):
         self.nsfp_seq += 1
@@ -237,8 +252,10 @@ class Seeder:
             po.action_create_invoice()
             bill = po.invoice_ids[:1]
             bdate = min(pdate + dt.timedelta(days=2), self.today)
-            bill.write({"invoice_date": bdate, "date": bdate, "ref": f"INV-{po.name}",
-                        "btk_nsfp": f"010.000-{bdate.year % 100:02d}.{self.rng.randint(10**7, 10**8 - 1)}"})
+            bvals = {"invoice_date": bdate, "date": bdate, "ref": f"INV-{po.name}"}
+            if self._has_btk():
+                bvals["btk_nsfp"] = f"010.000-{bdate.year % 100:02d}.{self.rng.randint(10**7, 10**8 - 1)}"
+            bill.write(bvals)
             bill.action_post()
             self._pay(bill, self.jr["BCA"], bdate + dt.timedelta(days=14))
             pos |= po
@@ -275,7 +292,10 @@ class Seeder:
         for o in orders:
             try:
                 with env.cr.savepoint():
-                    self._one_sale(o)
+                    meta = self._one_sale(o)
+                if meta and meta["wallet"] and self.rng.random() < 0.04 \
+                        and o["date"] + dt.timedelta(days=5) <= self.today - dt.timedelta(days=1):
+                    self.pending_returns.append(meta)
             except Exception as exc:  # noqa: BLE001
                 failed += 1
                 if failed <= 3:
@@ -304,23 +324,132 @@ class Seeder:
         for pick in so.picking_ids:
             self._receive_or_deliver(pick, when)
         inv = so._create_invoices()
-        inv.write({"invoice_date": o["date"], "btk_nsfp": self._nsfp(o["date"]),
-                   "btk_channel_ref": o["ref"], "btk_kode_transaksi": "04"})
+        vals = {"invoice_date": o["date"]}
+        if self._has_btk():
+            # NSFP dummy: di Coretax NSFP diterbitkan sistem saat faktur ditandatangani (lihat Impor NSFP)
+            vals.update({"btk_nsfp": self._nsfp(o["date"]), "btk_channel_ref": o["ref"], "btk_kode_transaksi": "04"})
+        inv.write(vals)
         inv.action_post()
         dpp = inv.amount_untaxed
         gross = inv.amount_total
         self.stats["omzet"] += dpp
         self.stats[f"omzet_{code}"] += dpp
+        meta = {"so": so.id, "inv": inv.id, "o": o, "gross": rupiah(gross), "dpp": rupiah(dpp), "wallet": None}
         if code == "STORE" and self.rng.random() < 0.4:
             self._pay(inv, self.jr["KTOK"], o["date"])
             self.cash_in[o["date"].strftime("%Y-%m")] += rupiah(gross)
-            return
+            meta["wallet"] = "KTOK"
+            return meta
         jcode = {"STORE": "QRIS", "SHOPEE": "SHPE", "TOKPED": "TKPD", "TIKTOK": "TTOK", "INSTAGRAM": "PGW"}[code]
         lag = 0 if code == "STORE" else C.SETTLEMENT_LAG_DAYS
         pdate = o["date"] + dt.timedelta(days=lag)
         if pdate <= self.today:
             self._pay(inv, self.jr[jcode], pdate)
             self.settle[code].append((pdate, rupiah(gross), rupiah(dpp)))
+            meta["wallet"] = jcode
+        return meta
+
+
+    # ------------------------------------------------------------------ retur penjualan
+    def returns_month(self, m):
+        env, done, failed = self.env, 0, 0
+        mine = [r for r in self.pending_returns if r["o"]["date"].replace(day=1) == m]
+        for r in mine:
+            try:
+                with env.cr.savepoint():
+                    self._return_sale(r)
+                done += 1
+            except Exception as exc:  # noqa: BLE001
+                failed += 1
+                if failed <= 2:
+                    print(f"   retur {r['o']['ref']} gagal: {str(exc)[:200]}")
+        print(f"   retur: {done} sukses, {failed} gagal")
+
+    def _return_sale(self, r):
+        env, o = self.env, r["o"]
+        code = o["ch"]["code"]
+        rdate = o["date"] + dt.timedelta(days=5)
+        when = dt.datetime.combine(rdate, dt.time(11))
+        so, inv = env["sale.order"].browse(r["so"]), env["account.move"].browse(r["inv"])
+        pick = so.picking_ids.filtered(lambda p: p.state == "done" and p.picking_type_code == "outgoing")[:1]
+        wiz = env["stock.return.picking"].with_context(
+            active_id=pick.id, active_ids=pick.ids, active_model="stock.picking").create({})
+        for ln in wiz.product_return_moves:
+            ln.quantity = ln.move_id.product_uom_qty
+        res = wiz.action_create_returns()
+        ret = env["stock.picking"].browse(res["res_id"])
+        self._receive_or_deliver(ret, when)
+        rev = env["account.move.reversal"].with_context(active_model="account.move", active_ids=inv.ids).create(
+            {"journal_id": inv.journal_id.id, "date": rdate, "reason": "Retur pelanggan"})
+        (getattr(rev, "reverse_moves", None) or rev.refund_moves)()
+        cn = inv.reversal_move_ids[-1:]
+        if cn.state == "draft":
+            cn.action_post()
+        self._pay(cn, self.jr[r["wallet"]], rdate)
+        if r["wallet"] == "KTOK":
+            self.cash_in[rdate.strftime("%Y-%m")] -= r["gross"]
+        else:
+            self.settle[code].append((rdate, -r["gross"], -r["dpp"]))
+        self.stats["retur"] += r["dpp"]
+
+    # ------------------------------------------------------------------ aset tetap (OCA account_asset_management)
+    def fixed_assets(self):
+        env = self.env
+        prof_id = load_registry(env).get("asset_profile")
+        if not prof_id or "account.asset" not in env:
+            print("   (modul account_asset_management belum terpasang: dilewati)")
+            return
+        items = [("Rak Display Toko", 18_000_000), ("Manekin & Perlengkapan Display", 7_500_000),
+                 ("Laptop & Perangkat POS", 14_000_000), ("Kamera & Lighting Live", 22_000_000)]
+        d = self.start + dt.timedelta(days=2)
+        for name, value in items:
+            self._journal_entry("ASET", d, f"Perolehan aset: {name}", [
+                (self.acc["equipment"], value, 0, None, None), (self.acc["bank_main"], 0, value, None, None)])
+            asset = env["account.asset"].create({
+                "name": name, "profile_id": prof_id, "purchase_value": value, "salvage_value": 0,
+                "date_start": d, "method": "linear", "method_time": "year", "method_number": 4,
+                "method_period": "month"})
+            asset.validate()
+        print(f"Aset tetap: {len(items)} aset dibuat & divalidasi")
+
+    def depreciate_assets(self):
+        env = self.env
+        if "account.asset.compute" not in env or not env["account.asset"].search_count([]):
+            return
+        for m in self.months:
+            e = month_end(m)
+            if e >= self.today:
+                continue
+            env["account.asset.compute"].create({"date_end": e}).asset_compute()
+        drafts = env["account.move"].search([("journal_id", "=", self.jr["ASET"]), ("state", "=", "draft")])
+        if drafts:
+            drafts.action_post()
+        print("Penyusutan aset dihitung per akhir bulan")
+
+    # ------------------------------------------------------------------ demo rekonsiliasi bank (OCA account_reconcile_oca)
+    def bank_reconciliation_demo(self):
+        env = self.env
+        if "account.bank.statement.line" not in env:
+            return
+        base = self.today - dt.timedelta(days=12)
+        specs = [("Jasa kebersihan toko", 650_000, "utilities"), ("Servis AC gudang", 1_200_000, "utilities"),
+                 ("Cetak banner promo", 2_300_000, "packaging")]
+        for i, (name, amt, acc) in enumerate(specs):
+            d = base + dt.timedelta(days=i * 3)
+            bill = env["account.move"].create({
+                "move_type": "in_invoice", "partner_id": self.partners["utility"].id, "invoice_date": d, "date": d,
+                "ref": name, "invoice_line_ids": [(0, 0, {"name": name, "account_id": self.acc[acc],
+                                                          "quantity": 1, "price_unit": amt})]})
+            bill.action_post()
+            self._pay(bill, self.jr["BCA2"], d + dt.timedelta(days=1))
+            env["account.bank.statement.line"].create({
+                "journal_id": self.jr["BCA2"], "date": d + dt.timedelta(days=1), "payment_ref": f"TRF {name.upper()}",
+                "amount": -amt, "partner_id": self.partners["utility"].id})
+        for j, (ref, amt) in enumerate([("BIAYA ADM BANK", -150_000), ("BUNGA TABUNGAN", 42_000)]):
+            env["account.bank.statement.line"].create({
+                "journal_id": self.jr["BCA2"], "date": self.today - dt.timedelta(days=2 + j), "payment_ref": ref,
+                "amount": amt})
+        print("Demo rekonsiliasi: 3 payment + 5 baris mutasi di jurnal BCA2 (belum direkonsiliasi)")
 
     # ------------------------------------------------------------------ settlement (fee, PPN masukan fee, PPh 22)
     def settle_channels(self):
@@ -368,7 +497,7 @@ class Seeder:
             line["analytic_distribution"] = dist
         vals = {"move_type": "in_invoice", "partner_id": self.partners[partner_key].id,
                 "invoice_date": d, "date": d, "ref": ref, "invoice_line_ids": [(0, 0, line)]}
-        if nsfp:
+        if nsfp and self._has_btk():
             vals["btk_nsfp"] = f"010.000-{d.year % 100:02d}.{self.rng.randint(10**7, 10**8 - 1)}"
         bill = env["account.move"].create(vals)
         bill.action_post()
@@ -392,9 +521,13 @@ class Seeder:
         split = {str(self.ana[c]): p for c, p in costs["packaging_split"].items()}
         self._bill("packaging", m.replace(day=6), f"Kemasan {tag}", "packaging", costs["packaging"],
                    ["ppn_in"], split, nsfp=True)
-        # gaji + PPh 21
+        # gaji + BPJS + PPh 21 (TER) via modul batik_id_payroll bila ada; fallback jurnal sederhana
         pay_day = m.replace(day=25)
-        if pay_day <= self.today:
+        if pay_day <= self.today and "btk.payroll.run" in self.env:
+            run = self.env["btk.payroll.run"].create({"date": pay_day})
+            run.action_compute()
+            run.action_post()
+        elif pay_day <= self.today:
             sal = costs["salary"]
             pph21 = rupiah(sal * costs["pph21_rate"] / 100)
             self._journal_entry("PYRL", pay_day, f"Gaji {tag}", [
@@ -415,7 +548,7 @@ class Seeder:
     # ------------------------------------------------------------------ monthly tax closing & remittance
     def tax_closing(self):
         env, acc = self.env, self.acc
-        keys = ["ppn_out", "ppn_in", "pph21", "pph23", "pph42", "pph22_prepaid", "landed_accr", "rev_goods", "rev_discount"]
+        keys = ["ppn_out", "ppn_in", "pph21", "pph23", "pph42", "pph22_prepaid", "landed_accr", "rev_goods", "rev_discount", "bpjs_payable"]
         env.cr.execute(
             """SELECT to_char(date_trunc('month', date), 'YYYY-MM'), account_id, SUM(balance)
                FROM account_move_line WHERE parent_state='posted' AND company_id=%s AND account_id = ANY(%s)
@@ -459,6 +592,10 @@ class Seeder:
                 self._journal_entry("PAJAK", nxt.replace(day=10), f"Setor PPh 21/23/4(2) masa {ym}", [
                     (acc["pph21"], p21, 0, None, None), (acc["pph23"], p23, 0, None, None),
                     (acc["pph42"], p42, 0, None, None), (acc["bank_main"], 0, tot, None, None)])
+            bp = -d["bpjs_payable"]
+            if bp > 0 and nxt.replace(day=15) <= self.today:
+                self._journal_entry("PAJAK", nxt.replace(day=15), f"Bayar iuran BPJS {ym}", [
+                    (acc["bpjs_payable"], bp, 0, None, None), (acc["bank_main"], 0, bp, None, None)])
             if lc > 0 and nxt.replace(day=20) <= self.today:
                 self._journal_entry("SETL", nxt.replace(day=20), f"Bayar ongkos angkut pembelian {ym}", [
                     (acc["landed_accr"], lc, 0, None, None), (acc["bank_main"], 0, lc, None, None)])
@@ -501,7 +638,7 @@ class Seeder:
         # 4) User demo (segregation of duties)
         gf = user_group_field(env)
         specs = [
-            ("accountant@batik-demo.example", "Akuntan Demo", ["account.group_account_user", "account.group_account_invoice",
+            ("accountant@batik-demo.example", "Akuntan Demo", ["account.group_account_manager", "account.group_account_user", "account.group_account_invoice",
                                                               "sales_team.group_sale_manager", "stock.group_stock_user"]),
             ("owner@batik-demo.example", "Owner (Read-only Audit)", ["account.group_account_readonly"]),
             ("kasir@batik-demo.example", "Kasir Toko", ["account.group_account_invoice", "sales_team.group_sale_salesman"]),
@@ -533,6 +670,8 @@ def run(env):
         sd.master()
     with s.step("Modal awal"):
         sd.opening_capital()
+    with s.step("Aset tetap (OCA account_asset_management)"):
+        sd.fixed_assets()
     with s.step("Rencana order dummy"):
         sd.plan_orders()
     for m in sd.months:
@@ -540,11 +679,17 @@ def run(env):
             sd.purchase_month(m)
         with s.step(f"{m:%Y-%m} penjualan multi-channel"):
             sd.sales_month(m)
+        with s.step(f"{m:%Y-%m} retur penjualan"):
+            sd.returns_month(m)
     with s.step("Settlement marketplace/QRIS/gateway"):
         sd.settle_channels()
     for m in sd.months:
         with s.step(f"{m:%Y-%m} biaya operasional"):
             sd.costs_month(m)
+    with s.step("Penyusutan aset tetap"):
+        sd.depreciate_assets()
+    with s.step("Demo rekonsiliasi bank"):
+        sd.bank_reconciliation_demo()
     with s.step("Penutupan pajak bulanan"):
         sd.tax_closing()
     with s.step("Audit trail, hardening, user demo"):

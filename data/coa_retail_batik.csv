@@ -2,6 +2,7 @@ key,code,name,account_type,reconcile,analytic_policy
 cash_store,1110101,Kas Toko,asset_cash,0,
 bank_main,1110201,Bank BCA - Operasional,asset_cash,0,
 bank_qris,1110202,Bank - Settlement QRIS/EDC,asset_cash,0,
+bank_rek,1110203,Bank BCA - Rekening Rekonsiliasi,asset_cash,0,
 wallet_shopee,1110301,Saldo Escrow Shopee,asset_current,1,
 wallet_tokped,1110302,Saldo Escrow Tokopedia,asset_current,1,
 wallet_tiktok,1110303,Saldo Escrow TikTok Shop,asset_current,1,
@@ -18,6 +19,7 @@ stock_in,2110201,Persediaan Interim - Barang Diterima Belum Ditagih,liability_cu
 ppn_out,2130101,PPN Keluaran,liability_current,0,
 ppn_payable,2130102,Utang PPN Kurang Bayar,liability_current,0,
 pph21,2130201,Utang PPh 21,liability_current,0,
+bpjs_payable,2130301,Utang BPJS (Ketenagakerjaan & Kesehatan),liability_current,0,
 pph23,2130202,Utang PPh 23,liability_current,0,
 pph42,2130203,Utang PPh 4(2) Final,liability_current,0,
 pph_final,2130204,Utang PPh Final UMKM (PP 55/2022),liability_current,0,
@@ -43,6 +45,7 @@ kol,6120102,Beban Host Live / KOL / Agency,expense,0,always
 shipping,6130101,Beban Ongkos Kirim Penjualan,expense,0,
 packaging,6130102,Beban Kemasan,expense,0,always
 salary,6210101,Beban Gaji & Tunjangan,expense,0,
+bpjs_exp,6210201,Beban BPJS Pemberi Kerja,expense,0,
 rent,6220101,Beban Sewa Toko,expense,0,
 utilities,6220102,"Beban Listrik, Air & Internet",expense,0,
 depreciation,6230101,Beban Penyusutan,expense_depreciation,0,

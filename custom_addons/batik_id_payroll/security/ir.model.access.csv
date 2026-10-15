@@ -1,0 +1,9 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_btk_ter_mgr,btk.ter.rate mgr,model_btk_ter_rate,account.group_account_manager,1,1,1,1
+access_btk_ter_user,btk.ter.rate user,model_btk_ter_rate,base.group_user,1,0,0,0
+access_btk_employee_mgr,btk.employee mgr,model_btk_employee,account.group_account_manager,1,1,1,1
+access_btk_employee_user,btk.employee user,model_btk_employee,base.group_user,1,0,0,0
+access_btk_run_mgr,btk.payroll.run mgr,model_btk_payroll_run,account.group_account_manager,1,1,1,1
+access_btk_run_user,btk.payroll.run user,model_btk_payroll_run,base.group_user,1,0,0,0
+access_btk_line_mgr,btk.payroll.line mgr,model_btk_payroll_line,account.group_account_manager,1,1,1,1
+access_btk_line_user,btk.payroll.line user,model_btk_payroll_line,base.group_user,1,0,0,0

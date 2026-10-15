@@ -75,7 +75,7 @@ def configure_company_accounting(env, acc):
     print("Anglo-saxon accounting ON; akun default pendapatan/HPP di-set")
 
 
-def ensure_journal(env, code, name, jtype, account_id=None):
+def ensure_journal(env, code, name, jtype, account_id=None, direct=True):
     company = env.company
     j = env["account.journal"].search([("code", "=", code), ("company_id", "=", company.id)], limit=1)
     if not j:
@@ -83,7 +83,7 @@ def ensure_journal(env, code, name, jtype, account_id=None):
         if jtype in ("bank", "cash") and account_id:
             vals["default_account_id"] = account_id
         j = env["account.journal"].create(vals)
-    if jtype in ("bank", "cash") and account_id:
+    if jtype in ("bank", "cash") and account_id and direct:
         # Demo: payment langsung ke akun jurnal (tanpa outstanding account + bank statement).
         # Produksi: gunakan statement/OCA account-reconcile.
         lines = j.inbound_payment_method_line_ids | j.outbound_payment_method_line_ids
@@ -104,6 +104,9 @@ def setup_journals(env, acc):
     reg = {}
     for code, name, jtype, key in specs:
         reg[code] = ensure_journal(env, code, name, jtype, acc[key]).id
+    # Rekening untuk demo rekonsiliasi bank: payment TIDAK langsung ke akun bank (pakai outstanding account)
+    reg["BCA2"] = ensure_journal(env, "BCA2", "Bank BCA - Rekening Rekonsiliasi", "bank", acc["bank_rek"], direct=False).id
+    reg["ASET"] = ensure_journal(env, "ASET", "Jurnal Aset Tetap & Penyusutan", "general").id
     reg["SETL"] = ensure_journal(env, "SETL", "Settlement Marketplace & Penyesuaian", "general").id
     reg["PAJAK"] = ensure_journal(env, "PAJAK", "Jurnal Pajak (PPN/PPh)", "general").id
     reg["PYRL"] = ensure_journal(env, "PYRL", "Jurnal Gaji", "general").id
@@ -228,6 +231,60 @@ def setup_mis(env):
     print("MIS Builder: template + instance Laba Rugi & Neraca dibuat")
 
 
+# --------------------------------------------------------------------------- payroll params, aset tetap, anggaran
+def setup_payroll_params(env, acc):
+    jr = load_registry(env)["journal"]
+    params = {"journal": jr["PYRL"], "salary": acc["salary"], "bpjs_exp": acc["bpjs_exp"],
+              "bpjs_payable": acc["bpjs_payable"], "pph21": acc["pph21"], "bank": acc["bank_main"]}
+    icp = env["ir.config_parameter"].sudo()
+    for k, v in params.items():
+        icp.set_param(f"batik.payroll.{k}", str(v))
+    print("Parameter akun payroll disimpan (batik.payroll.*)")
+
+
+def setup_asset_profile(env, acc):
+    """OCA account_asset_management: profil penyusutan garis lurus 4 tahun (peralatan toko)."""
+    Profile = env["account.asset.profile"]
+    jr = load_registry(env)["journal"]
+    prof = Profile.search([("name", "=", "Peralatan Toko & Kantor (4 th, garis lurus)")], limit=1)
+    if not prof:
+        prof = Profile.create({
+            "name": "Peralatan Toko & Kantor (4 th, garis lurus)",
+            "account_asset_id": acc["equipment"],
+            "account_depreciation_id": acc["accum_depr"],
+            "account_expense_depreciation_id": acc["depreciation"],
+            "journal_id": jr["ASET"],
+            "method": "linear", "method_time": "year", "method_number": 4, "method_period": "month",
+        })
+    save_registry(env, {"asset_profile": prof.id})
+    print("Profil aset tetap dibuat:", prof.name)
+
+
+def setup_budget(env):
+    """OCA mis_builder_budget: anggaran bulanan untuk KPI template Laba Rugi."""
+    Budget, Item = env["mis.budget"], env["mis.budget.item"]
+    report = env["mis.report"].search([("name", "=", "Laba Rugi - Retail Batik")], limit=1)
+    if not report or Budget.search([("name", "=", "Anggaran Operasional (DEMO)")], limit=1):
+        return
+    import datetime as dt
+    from dateutil.relativedelta import relativedelta
+    first = dt.date.today().replace(day=1)
+    start = first - relativedelta(months=C.MONTHS - 1)
+    budget = Budget.create({"name": "Anggaran Operasional (DEMO)", "report_id": report.id,
+                            "date_from": start, "date_to": first + relativedelta(months=1, days=-1)})
+    plan = {"pendapatan": 75_000_000, "hpp": 35_000_000, "beban_channel": 22_000_000, "beban_umum": 48_000_000}
+    kpis = {k.name: k for k in report.kpi_ids}
+    for i in range(C.MONTHS):
+        m0 = start + relativedelta(months=i)
+        m1 = m0 + relativedelta(months=1, days=-1)
+        for name, amount in plan.items():
+            kpi = kpis.get(name)
+            if kpi and kpi.expression_ids:
+                Item.create({"budget_id": budget.id, "kpi_expression_id": kpi.expression_ids[0].id,
+                             "date_from": m0, "date_to": m1, "amount": amount})
+    print("Anggaran MIS dibuat dengan", C.MONTHS, "bulan x", len(plan), "KPI")
+
+
 # --------------------------------------------------------------------------- orchestrator
 def run(env):
     s = Steps(env)
@@ -247,4 +304,10 @@ def run(env):
         setup_categories(env, acc)
     with s.step("MIS Builder: template Laba Rugi & Neraca"):
         setup_mis(env)
+    with s.step("Parameter akun payroll (batik_id_payroll)"):
+        setup_payroll_params(env, acc)
+    with s.step("Profil aset tetap (OCA account_asset_management)"):
+        setup_asset_profile(env, acc)
+    with s.step("Anggaran MIS (OCA mis_builder_budget)"):
+        setup_budget(env)
     return s.summary()

@@ -4,9 +4,8 @@ name: Build demo & deploy snapshot ke Cloudflare Pages
 # Alur: CI menjalankan Odoo sementara -> provisioning + dummy data -> export laporan statis
 # -> deploy folder ./site ke Cloudflare Pages (Direct Upload, tidak memakai kuota build Git Pages).
 on:
-  push:
-    branches: [main]
-    paths-ignore: ["docs/**", "README.md"]
+  # Manual saja (build Odoo di CI memakan menit Actions). Snapshot juga bisa dibuat dari staging VPS:
+  # python3 scripts/snapshot/build_snapshot.py --url https://staging... --out site
   workflow_dispatch:
     inputs:
       months:

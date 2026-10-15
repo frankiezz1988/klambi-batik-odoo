@@ -5,3 +5,9 @@ site/
 __pycache__/
 *.pyc
 .venv/
+
+# VPS
+env.staging
+env.prod
+.rendered/
+backups/

@@ -12,3 +12,10 @@ Login `admin / admin` (atau `owner@batik-demo.example` untuk perspektif auditor)
 8. **Pajak** – jurnal `PAJAK`: rekap PPN, PPh Final, setoran; unduh `efaktur_staging.csv`.
 9. **Audit trail** – *Pengaturan → Teknis → Audit → Logs*: perubahan harga produk, alamat vendor, deskripsi pajak. Coba edit invoice terposting sebagai akuntan → ditolak (hash/lock).
 10. **Kontrol** – coba backdate entri ke periode terkunci (jalankan seed dengan `DEMO_LOCK=1`).
+
+## Tambahan demo (v2)
+1. Akuntansi > Aset: 4 aset tetap + jadwal penyusutan bulanan.
+2. Retur: buka invoice yang punya credit note; lihat jurnal HPP/persediaan terbalik.
+3. Rekonsiliasi bank: jurnal BCA2 punya 5 mutasi belum direkonsiliasi (OCA `account_reconcile_oca`).
+4. Payroll: Karyawan > Penggajian; lihat PPh 21 TER & BPJS pada jurnal.
+5. Tab "SPT & Bupot" di snapshot + unduh CSV.

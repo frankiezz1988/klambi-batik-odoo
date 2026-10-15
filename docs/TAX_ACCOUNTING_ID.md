@@ -30,7 +30,7 @@ Bukan nasihat pajak. Angka/tarif perlu diverifikasi terhadap peraturan terbaru d
 ## 4. PPh
 | Jenis | Perlakuan di demo |
 |---|---|
-| PPh 22 marketplace 0,5% (PMK 37/2025, mulai 1 Agust 2026) | Dipotong dari settlement, debit *PPh 22 Dibayar Dimuka* |
+| PPh 22 marketplace 0,5% (PMK 37/2025; ditunda, mulai 1 Nov 2026) | Dipotong dari settlement mulai `PPH22_START`, debit *PPh 22 Dibayar Dimuka*. Pungutan 1 Agt-31 Okt 2026 (jika ada) wajib dikembalikan marketplace |
 | PPh Final UMKM 0,5% omzet | Accrual bulanan, disetor bulan berikutnya, dikurangi kredit PPh 22 |
 | PPh 23 2% jasa | Pajak pembelian bernilai negatif pada bill agency |
 | PPh 4(2) 10% sewa | Pajak pembelian bernilai negatif pada bill sewa |
@@ -42,3 +42,11 @@ Bukan nasihat pajak. Angka/tarif perlu diverifikasi terhadap peraturan terbaru d
 - Segregation of duties: akuntan, kasir, owner read-only.
 - Rekonsiliasi: escrow marketplace ↔ settlement; PPN buku ↔ SPT Masa; stok fisik ↔ valuasi.
 - Closing bulanan: kunci periode setelah PPN dilaporkan.
+
+## Tambahan (v2)
+- **Coretax:** NSFP diterbitkan sistem saat faktur ditandatangani; `batik_id_coretax` menyediakan impor NSFP dari
+  hasil Coretax, ekspor Excel/XML (XML eksperimental), pengecekan kelengkapan (NPWP/NIK pembeli, DPP nilai lain).
+- **PPh 21 TER:** `batik_id_payroll` (kategori A/B/C, Jan–Nov). Desember (Pasal 17) belum ada. BPJS: tarif & batas upah dicek tiap tahun.
+- **Lembar kerja SPT/bupot (snapshot):** `spt_ppn_keluaran.csv`, `spt_ppn_masukan.csv`, `bupot_pph21_23_4ayat2.csv`,
+  `pph22_dipungut_marketplace.csv`. Draf rekonsiliasi, bukan pelaporan resmi.
+- **Aset tetap, retur penjualan, rekonsiliasi bank:** lihat README.

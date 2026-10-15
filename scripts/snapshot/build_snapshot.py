@@ -94,7 +94,7 @@ def build(o):
     accs = {a["id"]: a for a in o.read_all("account.account", [], ["code", "name", "account_type"])}
     lines = o.read_all("account.move.line", [("parent_state", "=", "posted")],
                        ["date", "account_id", "debit", "credit", "balance", "move_id", "move_type",
-                        "product_id", "quantity", "display_type"])
+                        "product_id", "quantity", "display_type", "partner_id", "name"])
     moves = {m["id"]: m for m in o.read_all(
         "account.move", [("move_type", "=", "out_invoice"), ("state", "=", "posted")],
         ["name", "invoice_date", "partner_id", "team_id", "amount_untaxed", "amount_tax", "amount_total",
@@ -254,6 +254,31 @@ def build(o):
                         round(m["amount_untaxed"] * 11 / 12), round(m["amount_tax"]), round(m["amount_total"])])
     efaktur.sort()
 
+    # ---- Lembar kerja SPT Masa PPN & bukti potong (draf, untuk rekonsiliasi - bukan pelaporan resmi)
+    bills = {m["id"]: m for m in o.read_all(
+        "account.move", [("move_type", "=", "in_invoice"), ("state", "=", "posted")],
+        ["name", "invoice_date", "partner_id", "ref", "amount_untaxed", "amount_tax"])}
+    ppn_in = [[b["invoice_date"], m2o_name(b["partner_id"]), b["name"], b["ref"] or "",
+               round(b["amount_untaxed"]), round(b["amount_tax"])]
+              for b in bills.values() if b["amount_tax"]]
+    ppn_in.sort()
+    bupot = []
+    prefix = {"2130202": "PPh 23 (jasa 2%)", "2130203": "PPh 4(2) (sewa 10%)", "2130201": "PPh 21"}
+    for l in lines:
+        code = acct(l)["code"] or ""
+        if code in prefix and l["credit"] > 0:
+            bupot.append([l["date"], prefix[code], m2o_name(l["partner_id"]) or "-", l["name"] or "",
+                          round(l["credit"])])
+    bupot.sort()
+    pph22 = [[l["date"], m2o_name(l["partner_id"]) or "-", l["name"] or "", round(l["debit"])]
+             for l in lines if (acct(l)["code"] or "") == "1140201" and l["debit"] > 0]
+    pph22.sort()
+    spt_ppn = []
+    for i, mth in enumerate(months):
+        keluar = taxes["PPN Keluaran (kredit)"][i]
+        masuk = taxes["PPN Masukan (debit)"][i]
+        spt_ppn.append({"month": mth, "ppn_keluaran": keluar, "ppn_masukan": masuk, "kurang_lebih": keluar - masuk})
+
     audit = []
     if o.has_model("auditlog.log"):
         for r in o.call("auditlog.log", "search_read", [], fields=["create_date", "model_id", "res_id", "method", "user_id", "name"],
@@ -266,10 +291,11 @@ def build(o):
         "company": C.COMPANY["name"], "months": months,
         "pnl": {"sections": sections, "gross": gross, "operating": opinc, "net": net},
         "tb": tb, "bs": bs, "cashflow": cashflow, "channels": channels, "products": products,
-        "taxes": taxes, "audit": audit, "efaktur_count": len(efaktur),
+        "taxes": taxes, "spt_ppn": spt_ppn, "bupot_count": len(bupot), "pph22_count": len(pph22),
+        "audit": audit, "efaktur_count": len(efaktur),
         "kpi": {"revenue": sum(tot("rev")), "gross": sum(gross), "net": sum(net),
                 "orders": sum(c["orders"] for c in channels), "cash": ending[-1] if ending else 0},
-    }, efaktur
+    }, efaktur, {"ppn_masukan": ppn_in, "bupot": bupot, "pph22": pph22}
 
 
 def main():
@@ -280,7 +306,7 @@ def main():
     ap.add_argument("--password", default=os.environ.get("ODOO_PASSWORD", "admin"))
     ap.add_argument("--out", default="site")
     a = ap.parse_args()
-    data, efaktur = build(Odoo(a.url, a.db, a.user, a.password))
+    data, efaktur, spt = build(Odoo(a.url, a.db, a.user, a.password))
     os.makedirs(a.out, exist_ok=True)
     with open(os.path.join(HERE, "template.html"), encoding="utf-8") as fh:
         html = fh.read().replace("/*__DATA__*/null", json.dumps(data, ensure_ascii=False))
@@ -293,6 +319,15 @@ def main():
         w.writerow(["tanggal_faktur", "nsfp", "kode_transaksi", "no_invoice", "ref_order_channel", "pembeli",
                     "harga_jual_dpp_umum", "dpp_nilai_lain_11_12", "ppn", "total"])
         w.writerows(efaktur)
+    def dump(name, head, rows):
+        with open(os.path.join(a.out, name), "w", newline="", encoding="utf-8") as fh:
+            w = csv.writer(fh)
+            w.writerow(head)
+            w.writerows(rows)
+    dump("spt_ppn_masukan.csv", ["tanggal", "pemasok", "no_bill", "ref_faktur_pajak", "dpp", "ppn"], spt["ppn_masukan"])
+    dump("bupot_pph21_23_4ayat2.csv", ["tanggal", "jenis", "penerima_penghasilan", "keterangan", "pph_dipotong"], spt["bupot"])
+    dump("pph22_dipungut_marketplace.csv", ["tanggal", "pemungut", "keterangan", "pph22_kredit_pajak"], spt["pph22"])
+    dump("spt_ppn_keluaran.csv", ["tanggal_faktur", "nsfp", "kode_transaksi", "no_invoice", "ref_order", "pembeli", "harga_jual", "dpp_nilai_lain", "ppn", "total"], efaktur)
     with open(os.path.join(a.out, "_headers"), "w") as fh:
         fh.write("/*\n  X-Robots-Tag: noindex\n  Referrer-Policy: no-referrer\n")
     print(f"Snapshot tertulis di {a.out}/ ({len(data['months'])} bulan, {data['efaktur_count']} invoice)")
