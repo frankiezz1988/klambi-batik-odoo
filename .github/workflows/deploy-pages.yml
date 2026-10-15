@@ -1,0 +1,91 @@
+name: Build demo & deploy snapshot ke Cloudflare Pages
+
+# Odoo (Python + PostgreSQL) tidak bisa jalan di Cloudflare Pages/Workers free tier.
+# Alur: CI menjalankan Odoo sementara -> provisioning + dummy data -> export laporan statis
+# -> deploy folder ./site ke Cloudflare Pages (Direct Upload, tidak memakai kuota build Git Pages).
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["docs/**", "README.md"]
+  workflow_dispatch:
+    inputs:
+      months:
+        description: "Jumlah bulan data dummy"
+        default: "4"
+      orders_per_month:
+        description: "Order dummy per bulan"
+        default: "45"
+
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      ODOO_VERSION: "19.0"
+      ODOO_DB: batik_ci
+      DEMO_MONTHS: ${{ inputs.months || '4' }}
+      DEMO_ORDERS_PER_MONTH: ${{ inputs.orders_per_month || '45' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Siapkan .env
+        run: cp .env.example .env
+
+      - name: Clone OCA addons
+        run: bash scripts/fetch_oca.sh
+
+      - name: Build image Odoo
+        run: docker compose build odoo
+
+      - name: Bootstrap (DB, company, modul)
+        run: bash scripts/bootstrap.sh
+
+      - name: Provisioning master data
+        run: make provision
+
+      - name: Seed data dummy
+        run: make seed
+
+      - name: Jalankan Odoo & tunggu siap
+        run: |
+          docker compose up -d odoo
+          for i in $(seq 1 60); do
+            curl -fsS http://localhost:8069/web/login >/dev/null && exit 0
+            sleep 5
+          done
+          docker compose logs odoo | tail -n 50
+          exit 1
+
+      - name: Export snapshot laporan
+        env:
+          ODOO_URL: http://localhost:8069
+          ODOO_USER: admin
+          ODOO_PASSWORD: admin
+        run: python3 scripts/snapshot/build_snapshot.py --out site
+
+      - name: Upload artifact snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: site/
+
+      - name: Buat project Pages (sekali, abaikan jika sudah ada)
+        if: ${{ vars.CF_PAGES_PROJECT != '' }}
+        uses: cloudflare/wrangler-action@v3
+        continue-on-error: true
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages project create ${{ vars.CF_PAGES_PROJECT }} --production-branch=main
+
+      - name: Deploy ke Cloudflare Pages
+        if: ${{ vars.CF_PAGES_PROJECT != '' }}
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy site --project-name=${{ vars.CF_PAGES_PROJECT }} --branch=main

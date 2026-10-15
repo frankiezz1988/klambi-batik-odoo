@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Batik Kawung - Laporan Demo</title>
+<style>
+:root{--bg:#faf8f5;--card:#fff;--ink:#1d1b19;--mute:#6b645c;--line:#e7e1d8;--accent:#7a3b1e;--pos:#1f7a4d;--neg:#b3261e;--bar:#c8844a;--bar2:#7a3b1e}
+@media (prefers-color-scheme:dark){:root{--bg:#161412;--card:#1f1c19;--ink:#f1ece6;--mute:#a39b91;--line:#34302b;--accent:#e0a074;--pos:#5fcf99;--neg:#ff8a80;--bar:#c8844a;--bar2:#e0a074}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{padding:20px 16px 8px;max-width:1180px;margin:0 auto}
+h1{font-size:20px;margin:0}h2{font-size:16px;margin:24px 0 8px}
+.sub{color:var(--mute);font-size:12px}
+.banner{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--accent);padding:8px 12px;margin:12px 0;border-radius:6px;font-size:12px;color:var(--mute)}
+nav{display:flex;gap:4px;overflow-x:auto;padding:0 16px;max-width:1180px;margin:0 auto;border-bottom:1px solid var(--line)}
+nav button{background:none;border:0;border-bottom:2px solid transparent;color:var(--mute);padding:10px 12px;cursor:pointer;font:inherit;white-space:nowrap}
+nav button[aria-selected=true]{color:var(--ink);border-color:var(--accent);font-weight:600}
+main{max-width:1180px;margin:0 auto;padding:12px 16px 48px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px}
+.kpi b{display:block;font-size:20px;font-variant-numeric:tabular-nums}.kpi span{color:var(--mute);font-size:12px}
+.wrap{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:6px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}th{font-weight:600;color:var(--mute);font-size:12px;position:sticky;top:0;background:var(--card)}
+tr.tot td{font-weight:700;background:color-mix(in srgb,var(--line) 35%,transparent)}
+td.neg{color:var(--neg)}
+select{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px 8px;font:inherit}
+.bars{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px}
+.bar-row{display:grid;grid-template-columns:140px 1fr 110px;gap:8px;align-items:center;margin:5px 0;font-size:12px}
+.bar{height:14px;background:var(--bar);border-radius:3px}.bar.neg{background:var(--neg)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px}
+a{color:var(--accent)}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">Laporan Demo</h1>
+  <div class="sub" id="gen"></div>
+  <div class="banner">Data <b>DUMMY</b> hasil generator (bukan data perusahaan nyata). Tarif fee marketplace bersifat ilustrasi. Halaman ini snapshot statis dari Odoo Community + OCA; Odoo hidup berjalan lokal/di server terpisah.</div>
+</header>
+<nav id="tabs" role="tablist"></nav>
+<main id="view"></main>
+<script>
+const D = /*__DATA__*/null;
+const fmt = n => (n<0?"(":"")+Math.abs(Math.round(n)).toLocaleString("id-ID")+(n<0?")":"");
+const pct = n => (Math.round(n*10)/10).toLocaleString("id-ID")+"%";
+const mlabel = m => { const [y,mo]=m.split("-"); return ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"][+mo-1]+" "+y.slice(2); };
+const cell = (v,cls="") => `<td class="${cls}${typeof v==="number"&&v<0?" neg":""}">${typeof v==="number"?fmt(v):v}</td>`;
+const table = (head, rows) => `<div class="wrap"><table><thead><tr>${head.map(h=>`<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
+const row = (cells, tot=false) => `<tr class="${tot?"tot":""}">${cells.map(c=>cell(c)).join("")}</tr>`;
+const bars = (items, key, label) => { const max=Math.max(...items.map(i=>Math.abs(i[key])),1);
+  return `<div class="bars">${items.map(i=>`<div class="bar-row"><span>${label(i)}</span><div><div class="bar ${i[key]<0?"neg":""}" style="width:${Math.abs(i[key])/max*100}%"></div></div><span style="text-align:right">${fmt(i[key])}</span></div>`).join("")}</div>`; };
+const M = D.months.map(mlabel);
+
+const tabs = {
+ "Ringkasan": () => {
+  const k=D.kpi; const monthly=D.months.map((m,i)=>({m:mlabel(m),rev:D.pnl.sections.rev.total[i],net:D.pnl.net[i]}));
+  return `<div class="kpis">
+    <div class="kpi"><b>Rp ${fmt(k.revenue)}</b><span>Penjualan bersih (periode)</span></div>
+    <div class="kpi"><b>Rp ${fmt(k.gross)}</b><span>Laba kotor (${pct(k.revenue?k.gross/k.revenue*100:0)})</span></div>
+    <div class="kpi"><b>Rp ${fmt(k.net)}</b><span>Laba bersih setelah PPh final</span></div>
+    <div class="kpi"><b>${fmt(k.orders)}</b><span>Order / invoice</span></div>
+    <div class="kpi"><b>Rp ${fmt(k.cash)}</b><span>Posisi kas &amp; bank</span></div></div>
+    <h2>Penjualan bersih per bulan</h2>${bars(monthly,"rev",i=>i.m)}
+    <h2>Laba bersih per bulan</h2>${bars(monthly,"net",i=>i.m)}
+    <h2>Kontribusi per channel (setelah HPP, komisi, MDR, iklan, kemasan)</h2>${bars(D.channels,"contribution",c=>c.name)}`;
+ },
+ "Laba Rugi": () => {
+  const S=D.pnl.sections, names={rev:"Pendapatan",cogs:"Harga Pokok Penjualan",selling:"Beban Penjualan / Channel",ga:"Beban Umum & Administrasi",tax:"Pajak Penghasilan Final"};
+  const rows=[]; const sec=k=>{rows.push(row([`<b>${names[k]}</b>`,...M.map(()=>""),""]));
+    S[k].rows.forEach(r=>rows.push(row([`${r.code} ${r.name}`,...r.values,r.total])));
+    rows.push(row(["Total "+names[k],...S[k].total,S[k].total.reduce((a,b)=>a+b,0)],true));};
+  const sum=a=>a.reduce((x,y)=>x+y,0);
+  sec("rev");sec("cogs");rows.push(row(["LABA KOTOR",...D.pnl.gross,sum(D.pnl.gross)],true));
+  sec("selling");sec("ga");rows.push(row(["LABA USAHA",...D.pnl.operating,sum(D.pnl.operating)],true));
+  sec("tax");rows.push(row(["LABA BERSIH",...D.pnl.net,sum(D.pnl.net)],true));
+  return `<h2>Laporan Laba Rugi bulanan (Rp)</h2>`+table(["Akun",...M,"Total"],rows);
+ },
+ "Neraca & Neraca Saldo": () => {
+  const opts=D.months.map((m,i)=>`<option value="${i}" ${i===D.months.length-1?"selected":""}>${mlabel(m)}</option>`).join("");
+  setTimeout(()=>{const sel=document.getElementById("sel");const draw=()=>{const i=+sel.value,b=D.bs[i],t=D.tb[i];
+    const grp=(t,a)=>[row([`<b>${t}</b>`,""]),...a.filter(x=>Math.abs(x.value)>0.5).map(x=>row([`${x.code} ${x.name}`,x.value]))];
+    document.getElementById("bs").innerHTML=table(["Neraca (posisi akhir bulan)","Rp"],[...grp("ASET",b.asset),row(["Total Aset",b.total_asset],true),...grp("LIABILITAS",b.liability),...grp("EKUITAS",b.equity),row(["Total Liabilitas + Ekuitas",b.total_le],true)])+`<p class="sub">Selisih aset - (liabilitas+ekuitas): ${fmt(b.total_asset-b.total_le)}</p>`;
+    document.getElementById("tb").innerHTML=table(["Neraca Saldo (kumulatif)","Debit","Kredit","Saldo"],[...t.rows.map(r=>row([`${r.code} ${r.name}`,r.debit,r.credit,r.balance])),row(["TOTAL",t.totals.debit,t.totals.credit,t.totals.debit-t.totals.credit],true)]);};
+    sel.onchange=draw;draw();},0);
+  return `<h2>Posisi s.d. <select id="sel">${opts}</select></h2><div class="grid2"><div id="bs"></div><div id="tb"></div></div>`;
+ },
+ "Arus Kas": () => {
+  const cf=D.cashflow,sum=a=>a.reduce((x,y)=>x+y,0);
+  const rows=[...cf.categories.map(c=>row([c.name,...c.values,c.total])),row(["Kenaikan (penurunan) kas bersih",...cf.net,sum(cf.net)],true),row(["Saldo akhir kas & bank",...cf.ending,cf.ending[cf.ending.length-1]||0],true)];
+  return `<h2>Arus kas metode langsung (kas + bank; saldo escrow marketplace belum dihitung kas sampai settlement)</h2>`+table(["Kategori",...M,"Total"],rows);
+ },
+ "Profit per Channel": () => {
+  const rows=D.channels.map(c=>row([c.name,c.orders,c.revenue,c.cogs,c.gross_profit,pct(c.gm_pct),c.channel_costs,c.contribution,pct(c.contrib_pct),c.aov]));
+  const feeNames=[...new Set(D.channels.flatMap(c=>Object.keys(c.fees)))];
+  const frows=D.channels.map(c=>row([c.name,...feeNames.map(n=>c.fees[n]||0)]));
+  return `<h2>Profitabilitas per channel (analytic plan "Channel Penjualan")</h2>`+table(["Channel","Order","Penjualan","HPP","Laba kotor","GM%","Biaya channel","Kontribusi","Kontribusi%","AOV"],rows)+
+   `<h2>Rincian biaya channel</h2>`+table(["Channel",...feeNames],frows)+
+   `<p class="sub">Biaya tetap (sewa, gaji, listrik) tidak dialokasikan ke channel; lihat Laba Rugi untuk laba usaha.</p>`;
+ },
+ "HPP & Margin Produk": () => table(["Produk","Qty","Penjualan","HPP","HPP/unit","GM%"],D.products.map(p=>row([p.name,p.qty,p.revenue,p.cogs,p.hpp_unit,pct(p.gm_pct)]))),
+ "Pajak": () => {
+  const t=D.taxes,rows=Object.entries(t).map(([k,v])=>row([k,...v,v.reduce((a,b)=>a+b,0)]));
+  const net=t["PPN Keluaran (kredit)"].map((v,i)=>v-t["PPN Masukan (debit)"][i]);
+  rows.push(row(["PPN kurang (lebih) bayar",...net,net.reduce((a,b)=>a+b,0)],true));
+  return `<h2>Ringkasan pajak bulanan</h2>`+table(["Pos",...M,"Total"],rows)+`<p class="sub">Staging e-Faktur/Coretax: <a href="efaktur_staging.csv">efaktur_staging.csv</a> (${fmt(D.efaktur_count)} invoice). Verifikasi format terhadap template DJP sebelum dipakai.</p>`;
+ },
+ "Audit Trail": () => D.audit.length ? table(["Waktu","User","Model","Record","Aksi"],D.audit.map(a=>`<tr><td>${a.at}</td><td>${a.user}</td><td>${a.model}</td><td>${a.record}</td><td>${a.method}</td></tr>`))
+   : `<div class="banner">Tidak ada data auditlog pada snapshot ini (modul OCA <code>auditlog</code> belum terpasang atau belum ada aktivitas).</div>`
+};
+const nav=document.getElementById("tabs"),view=document.getElementById("view");
+function show(name){[...nav.children].forEach(b=>b.setAttribute("aria-selected",b.dataset.t===name));view.innerHTML=tabs[name]();location.hash=encodeURIComponent(name);}
+Object.keys(tabs).forEach(n=>{const b=document.createElement("button");b.textContent=n;b.dataset.t=n;b.setAttribute("role","tab");b.onclick=()=>show(n);nav.appendChild(b);});
+document.getElementById("title").textContent=D.company+" - Laporan Keuangan Demo";
+document.getElementById("gen").textContent="Snapshot: "+D.generated+" | periode "+M[0]+" - "+M[M.length-1];
+const start=decodeURIComponent(location.hash.slice(1));show(tabs[start]?start:"Ringkasan");
+</script>
+</body>
+</html>

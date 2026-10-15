@@ -1,0 +1,7 @@
+.env
+addons-oca/*
+!addons-oca/.gitkeep
+site/
+__pycache__/
+*.pyc
+.venv/

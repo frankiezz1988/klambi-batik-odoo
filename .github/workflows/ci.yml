@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Python syntax
+        run: python -m py_compile $(git ls-files '*.py')
+      - name: Shell syntax
+        run: bash -n scripts/bootstrap.sh && bash -n scripts/fetch_oca.sh
+      - name: XML well-formed
+        run: |
+          sudo apt-get install -y libxml2-utils >/dev/null
+          xmllint --noout custom_addons/batik_id_tax/views/*.xml
+      - name: Docker compose config
+        run: cp .env.example .env && docker compose config -q
+      - name: CoA CSV sanity (kode unik, tipe valid)
+        run: |
+          python - <<'EOF'
+          import csv
+          rows = list(csv.DictReader(open("data/coa_retail_batik.csv", encoding="utf-8")))
+          codes = [r["code"] for r in rows]
+          assert len(codes) == len(set(codes)), "kode akun duplikat"
+          keys = [r["key"] for r in rows]
+          assert len(keys) == len(set(keys)), "key duplikat"
+          valid = {"asset_receivable","asset_cash","asset_current","asset_non_current","asset_prepayments","asset_fixed",
+                   "liability_payable","liability_credit_card","liability_current","liability_non_current","equity",
+                   "equity_unaffected","income","income_other","expense","expense_depreciation","expense_direct_cost","off_balance"}
+          bad = [r for r in rows if r["account_type"] not in valid]
+          assert not bad, bad
+          print(len(rows), "akun OK")
+          EOF

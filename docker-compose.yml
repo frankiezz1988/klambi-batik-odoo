@@ -1,0 +1,56 @@
+name: batik-odoo
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: ${PG_USER:-odoo}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-odoo}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-odoo}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:5433:5432"   # untuk script snapshot/BI lokal
+
+  odoo:
+    build:
+      context: .
+      args:
+        ODOO_VERSION: ${ODOO_VERSION:-19.0}
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      HOST: db
+      USER: ${PG_USER:-odoo}
+      PASSWORD: ${PG_PASSWORD:-odoo}
+    ports:
+      - "${ODOO_PORT:-8069}:8069"
+    volumes:
+      - odoo-data:/var/lib/odoo
+      - ./config/odoo.conf:/etc/odoo/odoo.conf:ro
+      - ./addons-oca:/mnt/oca-addons:ro
+      - ./custom_addons:/mnt/custom-addons:ro
+      - ./scripts:/mnt/scripts:ro
+      - ./data:/mnt/data:ro
+    command: ["odoo", "--db_name=${ODOO_DB:-batik_demo}", "--without-demo=all"]
+
+  # Opsional: expose Odoo lokal lewat Cloudflare Tunnel (gratis).
+  #   docker compose --profile tunnel up -d
+  cloudflared:
+    profiles: ["tunnel"]
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on:
+      - odoo
+
+volumes:
+  pgdata:
+  odoo-data:

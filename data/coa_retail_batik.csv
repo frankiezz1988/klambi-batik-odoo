@@ -1,0 +1,50 @@
+key,code,name,account_type,reconcile,analytic_policy
+cash_store,1110101,Kas Toko,asset_cash,0,
+bank_main,1110201,Bank BCA - Operasional,asset_cash,0,
+bank_qris,1110202,Bank - Settlement QRIS/EDC,asset_cash,0,
+wallet_shopee,1110301,Saldo Escrow Shopee,asset_current,1,
+wallet_tokped,1110302,Saldo Escrow Tokopedia,asset_current,1,
+wallet_tiktok,1110303,Saldo Escrow TikTok Shop,asset_current,1,
+wallet_gateway,1110304,Saldo Payment Gateway (IG/Web),asset_current,1,
+inventory,1130101,Persediaan Barang Dagang,asset_current,0,
+stock_out,1130202,Persediaan Interim - Barang Dikirim,asset_current,1,
+ppn_in,1140101,PPN Masukan,asset_current,0,
+ppn_lebih,1140102,PPN Lebih Bayar,asset_current,0,
+pph22_prepaid,1140201,PPh 22 Dibayar Dimuka (Dipungut Marketplace),asset_current,0,
+prepaid_rent,1150101,Sewa Dibayar Dimuka,asset_prepayments,0,
+equipment,1210101,Peralatan Toko & Kantor,asset_fixed,0,
+accum_depr,1210102,Akumulasi Penyusutan Peralatan,asset_fixed,0,
+stock_in,2110201,Persediaan Interim - Barang Diterima Belum Ditagih,liability_current,1,
+ppn_out,2130101,PPN Keluaran,liability_current,0,
+ppn_payable,2130102,Utang PPN Kurang Bayar,liability_current,0,
+pph21,2130201,Utang PPh 21,liability_current,0,
+pph23,2130202,Utang PPh 23,liability_current,0,
+pph42,2130203,Utang PPh 4(2) Final,liability_current,0,
+pph_final,2130204,Utang PPh Final UMKM (PP 55/2022),liability_current,0,
+accrued,2140101,Biaya Masih Harus Dibayar,liability_current,0,
+landed_accr,2140102,Utang Biaya Pengiriman Pembelian (Landed Cost),liability_current,0,
+customer_deposit,2150101,Uang Muka Pelanggan,liability_current,0,
+capital,3110101,Modal Disetor,equity,0,
+rev_goods,4110101,Penjualan Barang Dagang,income,0,always
+rev_discount,4110201,Diskon Penjualan,income,0,always
+rev_return,4110301,Retur Penjualan,income,0,always
+other_income,4210101,Pendapatan Lain-lain,income_other,0,
+rounding_gain,4210102,Pendapatan Selisih Pembulatan,income_other,0,
+cogs,5110101,Harga Pokok Penjualan,expense_direct_cost,0,
+cogs_freight,5120101,Ongkos Angkut Pembelian,expense_direct_cost,0,
+cogs_adjust,5130101,Selisih / Penyesuaian Persediaan,expense_direct_cost,0,
+cogs_shrink,5130102,Persediaan Rusak / Hilang,expense_direct_cost,0,
+fee_comm,6110101,Beban Komisi Marketplace,expense,0,always
+fee_service,6110102,Beban Biaya Layanan & Transaksi Marketplace,expense,0,always
+fee_aff,6110103,Beban Komisi Afiliasi / Live,expense,0,always
+fee_payment,6110104,Beban MDR QRIS / EDC / Payment Gateway,expense,0,always
+ads,6120101,Beban Iklan & Promosi Digital,expense,0,always
+kol,6120102,Beban Host Live / KOL / Agency,expense,0,always
+shipping,6130101,Beban Ongkos Kirim Penjualan,expense,0,
+packaging,6130102,Beban Kemasan,expense,0,always
+salary,6210101,Beban Gaji & Tunjangan,expense,0,
+rent,6220101,Beban Sewa Toko,expense,0,
+utilities,6220102,"Beban Listrik, Air & Internet",expense,0,
+depreciation,6230101,Beban Penyusutan,expense_depreciation,0,
+bank_fee,6240101,Beban Administrasi Bank,expense,0,
+tax_expense,6910101,Beban PPh Final UMKM,expense,0,
