@@ -1,10 +1,9 @@
 name: Deploy demo ke VPS
 
-# Demo = satu stack `staging` di VPS: otomatis setiap push ke `main` (atau manual lewat workflow_dispatch).
+# OPSIONAL (jalur VPS). Jalur utama sekarang Railway (docs/RAILWAY.md) yang auto-deploy dari GitHub tanpa workflow.
+# Di sini hanya manual (workflow_dispatch).
 # Kode tetap ditulis di laptop (repo lokal). Laptop tidak perlu menjalankan Docker/Odoo.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
       target:

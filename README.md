@@ -50,9 +50,11 @@ custom_addons/batik_id_tax/        NSFP / kode transaksi / DPP nilai lain / NPWP
 custom_addons/batik_id_coretax/    impor NSFP, ekspor Excel/XML Coretax (XML EKSPERIMENTAL, belum diverifikasi)
 custom_addons/batik_id_payroll/    karyawan, PPh 21 TER, BPJS, jurnal gaji
 deploy/                            compose.vps.yml (+cloudflared), deploy.sh, ops (backup/restore)
-docs/VPS_STAGING_PROD.md           demo di VPS (satu stack) + subdomain Cloudflare
+docs/RAILWAY.md                    demo di Railway (jalur utama), subdomain Cloudflare
+deploy/railway/                    Dockerfile (kode di-bake), entrypoint, init bertahap
+docs/VPS_STAGING_PROD.md           alternatif: VPS sendiri
 scripts/snapshot/                  build_snapshot.py + template.html → situs statis
-.github/workflows/                 ci.yml, deploy-vps.yml (push main -> VPS), deploy-pages.yml (manual)
+.github/workflows/                 ci.yml, deploy-vps.yml (opsional, manual), deploy-pages.yml (manual)
 docs/                              TAX_ACCOUNTING_ID.md, CLOUDFLARE.md, DEMO_SCRIPT.md
 ```
 

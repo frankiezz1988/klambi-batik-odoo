@@ -1,0 +1,9 @@
+.git
+addons-oca
+site
+backups
+.rendered
+env.*
+.env
+**/__pycache__
+docs
