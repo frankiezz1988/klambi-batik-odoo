@@ -162,8 +162,11 @@ def setup_analytic(env):
 
 
 def setup_categories(env, acc):
-    root = env.ref("product.product_category_all")
     Cat = env["product.category"]
+    # xmlid product.product_category_all tidak ada di Odoo 19 -> cari kategori induk (tanpa parent), buat "All" bila tak ada
+    root = env.ref("product.product_category_all", raise_if_not_found=False) \
+        or Cat.search([("parent_id", "=", False)], order="id", limit=1) \
+        or Cat.create({"name": "All"})
     reg = {}
     for c in C.CATEGORIES:
         vals = {

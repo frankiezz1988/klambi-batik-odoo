@@ -31,6 +31,15 @@ fi
 export ODOO_DB="${ODOO_DB:-${PGDATABASE:-railway}}"
 export PGPORT="${PGPORT:-5432}"
 
+# Reset sekali-jalan (opsional): set RESET_DB=<token baru> untuk mengosongkan DB lalu inisialisasi ulang dari awal.
+python3 /opt/batik/dbmark.py reset && rc=0 || rc=$?
+if [ "$rc" -eq 10 ]; then
+  echo "!! RESET_DB: database dikosongkan; filestore dihapus; inisialisasi dari awal"
+  rm -rf "/var/lib/odoo/filestore/${ODOO_DB}" /var/lib/odoo/sessions
+elif [ "$rc" -ne 0 ]; then
+  echo "!! reset gagal (rc=$rc)"
+fi
+
 # Odoo menolak db_user=postgres. Buat/sinkronkan role aplikasi non-superuser lewat kredensial admin.
 export ODOO_PGUSER="${ODOO_PGUSER:-odoo_app}" ODOO_PGPASSWORD="${ODOO_PGPASSWORD:-$PGPASSWORD}"
 python3 /opt/batik/dbmark.py role || {
@@ -43,7 +52,7 @@ chown -R odoo:odoo /var/lib/odoo 2>/dev/null || true
 rm -f /tmp/odoo.conf   # sisa run sebelumnya (milik user odoo) tidak boleh ditimpa root di /tmp
 cat > /tmp/odoo.conf <<CONF
 [options]
-addons_path = /usr/lib/python3/dist-packages/odoo/addons,/mnt/oca-addons/account-financial-reporting,/mnt/oca-addons/account-financial-tools,/mnt/oca-addons/account-invoicing,/mnt/oca-addons/account-analytic,/mnt/oca-addons/account-reconcile,/mnt/oca-addons/server-tools,/mnt/oca-addons/mis-builder,/mnt/oca-addons/reporting-engine,/mnt/oca-addons/bank-statement-import,/mnt/custom-addons
+addons_path = /usr/lib/python3/dist-packages/odoo/addons,/mnt/oca-addons/account-financial-reporting,/mnt/oca-addons/account-financial-tools,/mnt/oca-addons/account-invoicing,/mnt/oca-addons/account-analytic,/mnt/oca-addons/account-reconcile,/mnt/oca-addons/server-tools,/mnt/oca-addons/server-ux,/mnt/oca-addons/mis-builder,/mnt/oca-addons/reporting-engine,/mnt/oca-addons/bank-statement-import,/mnt/custom-addons
 data_dir = /var/lib/odoo
 admin_passwd = ${ADMIN_PASSWD}
 db_host = ${PGHOST}

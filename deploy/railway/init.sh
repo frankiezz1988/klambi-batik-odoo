@@ -28,29 +28,40 @@ if ! mark_get core; then
   odoo_srv -d "$DB" -i "$CORE" --stop-after-init --without-demo=all || exit 1
   mark_set core
 fi
-if ! mark_get modules; then
-  echo ">> [3/5] modul OCA + custom (satu per satu)"
-  FAILED=()
-  for m in "${EXTRA[@]}"; do
-    echo "   - $m"
-    odoo_srv -d "$DB" -i "$m" --stop-after-init --without-demo=all >"/tmp/install_$m.log" 2>&1 \
-      || { echo "     !! GAGAL $m"; tail -n 5 "/tmp/install_$m.log"; FAILED+=("$m"); }
-  done
-  [ ${#FAILED[@]} -gt 0 ] && echo "Modul gagal: ${FAILED[*]}"
-  mark_set modules
-fi
+# Modul dipasang satu per satu, hanya yang belum terpasang (aman diulang). Tahap ditandai selesai bila tak ada yang gagal.
+echo ">> [3/5] modul OCA + custom (satu per satu)"
+FAILED=()
+for m in "${EXTRA[@]}"; do
+  if python3 /opt/batik/dbmark.py installed "$m"; then echo "   - $m (sudah terpasang)"; continue; fi
+  echo "   - $m"
+  odoo_srv -d "$DB" -i "$m" --stop-after-init --without-demo=all >"/tmp/install_$m.log" 2>&1 \
+    || { echo "     !! GAGAL $m"; grep -E "UserError|Error|dependen" "/tmp/install_$m.log" | tail -n 3; FAILED+=("$m"); }
+done
+if [ ${#FAILED[@]} -gt 0 ]; then echo "Modul gagal: ${FAILED[*]}"; else mark_set modules; fi
+# Provisioning idempoten: diulang tiap boot sampai semua langkah [OK]. Ditandai selesai hanya bila tak ada [FAIL].
 if ! mark_get provisioned; then
   echo ">> [4/5] provisioning (CoA, pajak, analytic, jurnal)"
-  odoo_shell -d "$DB" --no-http < /mnt/scripts/provision/run_provision.py && mark_set provisioned
+  odoo_shell -d "$DB" --no-http < /mnt/scripts/provision/run_provision.py 2>&1 | tee /tmp/provision.log
+  if grep -q '\[FAIL\]' /tmp/provision.log; then
+    echo "!! provisioning ada langkah [FAIL] -> seed dilewati; perbaiki lalu deploy ulang (tahap ini diulang otomatis)"
+  else
+    mark_set provisioned
+  fi
 fi
-if [ "${SEED_DEMO:-1}" = "1" ] && ! mark_get seeded; then
+# Seed hanya bila provisioning bersih. Seed TIDAK idempoten: bila terhenti/gagal, tidak diulang otomatis.
+if [ "${SEED_DEMO:-1}" = "1" ] && mark_get provisioned && ! mark_get seeded; then
   if mark_get seed_started; then
-    echo "!! Seed pernah dimulai tapi tidak selesai (mungkin kehabisan memori). TIDAK diulang otomatis agar data tidak ganda."
-    echo "   Reset: kosongkan DB (hapus & buat ulang service Postgres/volume) lalu deploy ulang, dengan DEMO_ORDERS_PER_MONTH lebih kecil."
+    echo "!! Seed pernah dimulai tapi tidak bersih (OOM atau ada [FAIL]). TIDAK diulang otomatis agar data tidak ganda."
+    echo "   Ulang dari nol: set variable RESET_DB=<token baru, mis. run2> lalu deploy (database dikosongkan)."
   else
     echo ">> [5/5] seed data demo (${DEMO_MONTHS} bulan x ${DEMO_ORDERS_PER_MONTH} order)"
     mark_set seed_started
-    odoo_shell -d "$DB" --no-http < /mnt/scripts/provision/run_seed.py && mark_set seeded
+    odoo_shell -d "$DB" --no-http < /mnt/scripts/provision/run_seed.py 2>&1 | tee /tmp/seed.log
+    if grep -q '\[FAIL\]' /tmp/seed.log; then
+      echo "!! seed ada langkah [FAIL] (lihat RINGKASAN di atas); tidak ditandai selesai"
+    else
+      mark_set seeded
+    fi
   fi
 fi
 echo ">> init selesai"

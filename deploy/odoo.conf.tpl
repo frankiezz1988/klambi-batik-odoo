@@ -1,6 +1,6 @@
 ; Di-render oleh deploy/deploy.sh dengan envsubst. Jangan commit hasil render (.rendered/ di .gitignore).
 [options]
-addons_path = /usr/lib/python3/dist-packages/odoo/addons,/mnt/oca-addons/account-financial-reporting,/mnt/oca-addons/account-financial-tools,/mnt/oca-addons/account-invoicing,/mnt/oca-addons/account-analytic,/mnt/oca-addons/account-reconcile,/mnt/oca-addons/server-tools,/mnt/oca-addons/mis-builder,/mnt/oca-addons/reporting-engine,/mnt/oca-addons/bank-statement-import,/mnt/custom-addons
+addons_path = /usr/lib/python3/dist-packages/odoo/addons,/mnt/oca-addons/account-financial-reporting,/mnt/oca-addons/account-financial-tools,/mnt/oca-addons/account-invoicing,/mnt/oca-addons/account-analytic,/mnt/oca-addons/account-reconcile,/mnt/oca-addons/server-tools,/mnt/oca-addons/server-ux,/mnt/oca-addons/mis-builder,/mnt/oca-addons/reporting-engine,/mnt/oca-addons/bank-statement-import,/mnt/custom-addons
 admin_passwd = ${ADMIN_PASSWD}
 db_name = ${ODOO_DB}
 dbfilter = ^${ODOO_DB}$

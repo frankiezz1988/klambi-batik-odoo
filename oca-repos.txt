@@ -8,3 +8,4 @@ server-tools
 mis-builder
 reporting-engine
 bank-statement-import
+server-ux
