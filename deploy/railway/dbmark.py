@@ -32,6 +32,21 @@ if mode == "reset":
     cur.execute("select 1 from batik_meta.reset_log where token=%s", (token,))
     if cur.fetchone():
         sys.exit(0)  # token ini sudah pernah dijalankan; aman dibiarkan terpasang
+    # JANGAN "drop schema public cascade" sekaligus: ratusan tabel dalam satu transaksi melebihi
+    # max_locks_per_transaction ("out of shared memory"). Hapus per objek (autocommit), lalu schema.
+    def drop_each(query, fmt):
+        cur.execute(query)
+        for (name,) in cur.fetchall():
+            cur.execute(sql.SQL(fmt).format(sql.Identifier(name)))
+
+    drop_each("select tablename from pg_tables where schemaname='public'",
+              "drop table if exists public.{} cascade")
+    drop_each("select viewname from pg_views where schemaname='public'",
+              "drop view if exists public.{} cascade")
+    drop_each("select matviewname from pg_matviews where schemaname='public'",
+              "drop materialized view if exists public.{} cascade")
+    drop_each("select sequencename from pg_sequences where schemaname='public'",
+              "drop sequence if exists public.{} cascade")
     cur.execute("drop schema public cascade")
     cur.execute("create schema public")
     cur.execute("insert into batik_meta.reset_log (token) values (%s)", (token,))

@@ -37,7 +37,8 @@ if [ "$rc" -eq 10 ]; then
   echo "!! RESET_DB: database dikosongkan; filestore dihapus; inisialisasi dari awal"
   rm -rf "/var/lib/odoo/filestore/${ODOO_DB}" /var/lib/odoo/sessions
 elif [ "$rc" -ne 0 ]; then
-  echo "!! reset gagal (rc=$rc)"
+  echo "!! reset gagal (rc=$rc); berhenti agar tidak lanjut di atas data setengah terhapus (Railway akan mencoba lagi)"
+  exit 1
 fi
 
 # Odoo menolak db_user=postgres. Buat/sinkronkan role aplikasi non-superuser lewat kredensial admin.
