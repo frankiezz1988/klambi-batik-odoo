@@ -635,13 +635,11 @@ class Seeder:
                 rule = env["auditlog.rule"].create({
                     "name": f"Audit {model}", "model_id": mid.id, "log_type": "full",
                     "log_read": False, "log_create": True, "log_write": True, "log_unlink": True})
-                for meth in ("subscribe", "action_subscribe"):
+                # OCA auditlog 19: draft -> confirmed lewat set_to_confirmed() (versi lama: subscribe())
+                for meth in ("set_to_confirmed", "subscribe", "action_subscribe"):
                     if hasattr(rule, meth):
                         getattr(rule, meth)()
                         break
-                else:
-                    if "state" in rule._fields:
-                        rule.write({"state": "subscribed"})
             print(f"Audit trail: rule dipasang untuk {len(models)} model")
             # aktivitas contoh agar Audit Log tidak kosong saat demo
             prods = list(self.products.values())[:3]
@@ -686,6 +684,13 @@ class Seeder:
         for k in sorted(self.stats):
             if k.startswith("omzet"):
                 print(f"   {k}: Rp {self.stats[k]:,.0f}")
+        # bukti HPP/persediaan jatuh di bulan yang benar (valuasi stok Odoo 19 diposting lewat faktur, bukan jurnal terpisah)
+        self.env.cr.execute("""SELECT to_char(l.date,'YYYY-MM'), LEFT(a.code,1) AS grp, SUM(l.debit-l.credit)
+                               FROM account_move_line l JOIN account_account a ON a.id=l.account_id
+                               WHERE l.parent_state='posted' AND l.company_id=%s AND (a.code LIKE '5%%' OR a.code LIKE '113%%')
+                               GROUP BY 1,2 ORDER BY 1,2""", (self.env.company.id,))
+        for ym, grp, bal in self.env.cr.fetchall():
+            print(f"   saldo {'HPP' if grp == '5' else 'Persediaan'} {ym}: Rp {bal:,.0f}")
 
 
 def run(env):
