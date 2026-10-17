@@ -19,13 +19,13 @@ EXTRA=(batik_id_tax batik_id_coretax batik_id_payroll auditlog account_financial
 
 if ! mark_get base; then
   echo ">> [1/5] base + bahasa Indonesia"
-  odoo_srv -d "$DB" -i base --stop-after-init --without-demo=all --load-language=id_ID || exit 1
+  odoo_srv -d "$DB" -i base --stop-after-init --without-demo=true --load-language=id_ID || exit 1
   mark_set base
 fi
 if ! mark_get core; then
   echo ">> [2/5] company Indonesia/IDR lalu modul core"
   odoo_shell -d "$DB" --no-http < /mnt/scripts/provision/run_company.py || exit 1
-  odoo_srv -d "$DB" -i "$CORE" --stop-after-init --without-demo=all || exit 1
+  odoo_srv -d "$DB" -i "$CORE" --stop-after-init --without-demo=true || exit 1
   mark_set core
 fi
 # Modul dipasang satu per satu, hanya yang belum terpasang (aman diulang). Tahap ditandai selesai bila tak ada yang gagal.
@@ -34,7 +34,7 @@ FAILED=()
 for m in "${EXTRA[@]}"; do
   if python3 /opt/batik/dbmark.py installed "$m"; then echo "   - $m (sudah terpasang)"; continue; fi
   echo "   - $m"
-  odoo_srv -d "$DB" -i "$m" --stop-after-init --without-demo=all >"/tmp/install_$m.log" 2>&1 \
+  odoo_srv -d "$DB" -i "$m" --stop-after-init --without-demo=true >"/tmp/install_$m.log" 2>&1 \
     || { echo "     !! GAGAL $m"; grep -E "UserError|Error|dependen" "/tmp/install_$m.log" | tail -n 3; FAILED+=("$m"); }
 done
 if [ ${#FAILED[@]} -gt 0 ]; then echo "Modul gagal: ${FAILED[*]}"; else mark_set modules; fi
@@ -67,5 +67,11 @@ if [ "${SEED_DEMO:-1}" = "1" ] && mark_get provisioned && ! mark_get seeded; the
       mark_set seeded
     fi
   fi
+fi
+# Post-init idempoten: admin diberi semua hak akses bisnis (menu Accounting/Invoicing/Sales/...), web.base.url dari BASE_URL.
+if ! mark_get postinit_v1 || [ -n "${BASE_URL:-}" ]; then
+  echo ">> post-init (hak akses admin${BASE_URL:+, web.base.url=$BASE_URL})"
+  odoo_shell -d "$DB" --no-http < /mnt/scripts/provision/run_postinit.py 2>&1 | grep -E "POST-INIT|Traceback|Error" || true
+  mark_set postinit_v1
 fi
 echo ">> init selesai"

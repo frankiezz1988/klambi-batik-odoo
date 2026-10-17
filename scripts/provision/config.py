@@ -7,7 +7,7 @@ ORDERS_PER_MONTH = int(os.environ.get("DEMO_ORDERS_PER_MONTH", "90"))
 DEMO_LOCK = os.environ.get("DEMO_LOCK", "0") == "1"
 
 COMPANY = {
-    "name": "PT Batik Kawung Nusantara (DEMO)",
+    "name": os.environ.get("COMPANY_NAME", "Klambi Bali"),
     "street": "Jl. Malioboro No. 1",
     "city": "Yogyakarta",
     "zip": "55213",

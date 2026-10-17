@@ -39,7 +39,7 @@ services:
       - ./custom_addons:/mnt/custom-addons:ro
       - ./scripts:/mnt/scripts:ro
       - ./data:/mnt/data:ro
-    command: ["odoo", "--db_name=${ODOO_DB:-batik_demo}", "--without-demo=all"]
+    command: ["odoo", "--db_name=${ODOO_DB:-batik_demo}", "--without-demo=true"]
 
   # Opsional: expose Odoo lokal lewat Cloudflare Tunnel (gratis).
   #   docker compose --profile tunnel up -d

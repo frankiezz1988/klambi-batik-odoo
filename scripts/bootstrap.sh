@@ -35,19 +35,19 @@ EXTRA_MODULES=(
 
 $COMPOSE up -d db
 echo ">> [1/4] base + bahasa Indonesia"
-"${RUN[@]}" odoo -d "$DB" -i base --stop-after-init --without-demo=all --load-language=id_ID || exit 1
+"${RUN[@]}" odoo -d "$DB" -i base --stop-after-init --without-demo=true --load-language=id_ID || exit 1
 
 echo ">> [2/4] company: Indonesia / IDR (harus sebelum modul accounting)"
 "${RUN[@]}" odoo shell -d "$DB" --no-http < scripts/provision/run_company.py || exit 1
 
 echo ">> [3/4] modul core: $CORE"
-"${RUN[@]}" odoo -d "$DB" -i "$CORE" --stop-after-init --without-demo=all || exit 1
+"${RUN[@]}" odoo -d "$DB" -i "$CORE" --stop-after-init --without-demo=true || exit 1
 
 echo ">> [4/4] modul OCA + custom"
 FAILED=()
 for m in "${EXTRA_MODULES[@]}"; do
   echo "   - install $m"
-  if ! "${RUN[@]}" odoo -d "$DB" -i "$m" --stop-after-init --without-demo=all >"/tmp/install_$m.log" 2>&1; then
+  if ! "${RUN[@]}" odoo -d "$DB" -i "$m" --stop-after-init --without-demo=true >"/tmp/install_$m.log" 2>&1; then
     echo "     !! GAGAL ($m) -> lihat /tmp/install_$m.log (tail di bawah)"
     tail -n 5 "/tmp/install_$m.log"
     FAILED+=("$m")
