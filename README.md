@@ -98,3 +98,5 @@ Detail di `docs/CLOUDFLARE.md`. Ringkas:
 - Ekspor XML Coretax **eksperimental**: skema belum diverifikasi terhadap spesifikasi DJP. Di Coretax, NSFP diterbitkan sistem saat faktur ditandatangani, sehingga modul menyediakan *impor* NSFP, bukan pengelolaan rentang.
 - Tarif/batas BPJS dan tabel TER perlu dicek ulang terhadap regulasi tahun berjalan.
 - Addon custom belum pernah dipasang di Odoo nyata (hanya cek sintaks/XML).
+
+#
