@@ -2,7 +2,9 @@
 # Inisialisasi bertahap & fail-soft. Tiap tahap ditandai di DB (batik.init.*) sehingga restart melanjutkan, bukan mengulang.
 set -uo pipefail
 DB="$ODOO_DB"
-ODOO=(runuser -u odoo -- odoo -c /tmp/odoo.conf)
+# Odoo 19 memberi prioritas env PGUSER/PGHOST/PGPASSWORD/PGPORT di atas file config -> kosongkan, kirim lewat CLI.
+ODOO=(runuser -u odoo -- env -u PGUSER -u PGPASSWORD -u PGHOST -u PGPORT -u PGDATABASE
+      odoo -c /tmp/odoo.conf --db_host="$PGHOST" --db_port="$PGPORT" --db_user="$ODOO_PGUSER" --db_password="$ODOO_PGPASSWORD")
 mark_get() { python3 /opt/batik/dbmark.py get "$1"; }
 mark_set() { python3 /opt/batik/dbmark.py set "$1"; }
 

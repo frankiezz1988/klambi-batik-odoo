@@ -67,4 +67,5 @@ chown odoo:odoo /tmp/odoo.conf
 bash /opt/batik/init.sh || echo "!! init.sh selesai dengan error (lihat log di atas); Odoo tetap dijalankan"
 
 echo ">> start Odoo di port ${PORT:-8069}"
-exec runuser -u odoo -- odoo -c /tmp/odoo.conf
+exec runuser -u odoo -- env -u PGUSER -u PGPASSWORD -u PGHOST -u PGPORT -u PGDATABASE \
+  odoo -c /tmp/odoo.conf --db_host="$PGHOST" --db_port="$PGPORT" --db_user="$ODOO_PGUSER" --db_password="$ODOO_PGPASSWORD"
