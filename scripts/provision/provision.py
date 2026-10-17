@@ -179,6 +179,12 @@ def setup_categories(env, acc):
             "property_stock_account_input_categ_id": acc["stock_in"],
             "property_stock_account_output_categ_id": acc["stock_out"],
         }
+        # field akun input/output stok berbeda antar versi Odoo (hilang di 19): kirim hanya yang ada
+        skipped = [k for k in vals if k not in Cat._fields]
+        for k in skipped:
+            vals.pop(k)
+        if skipped and not reg:
+            print("Catatan: field kategori tidak ada di versi ini, dilewati: " + ", ".join(skipped))
         cat = Cat.search([("name", "=", c["name"])], limit=1)
         if cat:
             cat.write(vals)
@@ -224,7 +230,7 @@ def setup_mis(env):
         Kpi.create({"report_id": bs.id, "sequence": i * 10, "name": name, "description": desc, "expression": expr})
     for rep, title in ((pl, "Laba Rugi Bulanan"), (bs, "Neraca Bulanan")):
         periods = [
-            (0, {"name": f"M-{i}" if i else "Bulan ini", "mode": "relative", "type": "m", "offset": -i, "duration": 1})
+            (0, 0, {"name": f"M-{i}" if i else "Bulan ini", "mode": "relative", "type": "m", "offset": -i, "duration": 1})
             for i in range(5, -1, -1)
         ]
         env["mis.report.instance"].create({
