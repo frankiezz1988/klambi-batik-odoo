@@ -50,9 +50,13 @@ if ! mark_get provisioned; then
 fi
 # Seed hanya bila provisioning bersih. Seed TIDAK idempoten: bila terhenti/gagal, tidak diulang otomatis.
 if [ "${SEED_DEMO:-1}" = "1" ] && mark_get provisioned && ! mark_get seeded; then
-  if mark_get seed_started; then
+  if mark_get seed_started && [ -n "${SEED_ACCEPT:-}" ]; then
+    echo ">> SEED_ACCEPT di-set: data seed yang ada diterima apa adanya, ditandai selesai (hapus variabel ini setelahnya)"
+    mark_set seeded
+  elif mark_get seed_started; then
     echo "!! Seed pernah dimulai tapi tidak bersih (OOM atau ada [FAIL]). TIDAK diulang otomatis agar data tidak ganda."
     echo "   Ulang dari nol: set variable RESET_DB=<token baru, mis. run2> lalu deploy (database dikosongkan)."
+    echo "   Atau terima data seed yang ada: set SEED_ACCEPT=1 lalu deploy (tanpa reset)."
   else
     echo ">> [5/5] seed data demo (${DEMO_MONTHS} bulan x ${DEMO_ORDERS_PER_MONTH} order)"
     mark_set seed_started

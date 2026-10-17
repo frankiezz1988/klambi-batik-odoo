@@ -684,13 +684,24 @@ class Seeder:
         for k in sorted(self.stats):
             if k.startswith("omzet"):
                 print(f"   {k}: Rp {self.stats[k]:,.0f}")
-        # bukti HPP/persediaan jatuh di bulan yang benar (valuasi stok Odoo 19 diposting lewat faktur, bukan jurnal terpisah)
-        self.env.cr.execute("""SELECT to_char(l.date,'YYYY-MM'), LEFT(a.code,1) AS grp, SUM(l.debit-l.credit)
-                               FROM account_move_line l JOIN account_account a ON a.id=l.account_id
-                               WHERE l.parent_state='posted' AND l.company_id=%s AND (a.code LIKE '5%%' OR a.code LIKE '113%%')
-                               GROUP BY 1,2 ORDER BY 1,2""", (self.env.company.id,))
-        for ym, grp, bal in self.env.cr.fetchall():
-            print(f"   saldo {'HPP' if grp == '5' else 'Persediaan'} {ym}: Rp {bal:,.0f}")
+        # bukti HPP/persediaan jatuh di bulan yang benar (diagnostik; tidak boleh menggagalkan seed)
+        try:
+            accs = self.env["account.account"].search([])   # kode akun Odoo 19 per-company: baca lewat ORM
+            grp_of = {a.id: ("HPP" if (a.code or "").startswith("5") else "Persediaan")
+                      for a in accs if (a.code or "").startswith(("5", "113"))}
+            if grp_of:
+                self.env.cr.execute("""SELECT to_char(date,'YYYY-MM'), account_id, SUM(debit-credit)
+                                       FROM account_move_line
+                                       WHERE parent_state='posted' AND company_id=%s AND account_id = ANY(%s)
+                                       GROUP BY 1,2 ORDER BY 1""", (self.env.company.id, list(grp_of)))
+                agg = defaultdict(float)
+                for ym, acc_id, bal in self.env.cr.fetchall():
+                    agg[(ym, grp_of[acc_id])] += bal
+                for (ym, g), bal in sorted(agg.items()):
+                    print(f"   saldo {g} {ym}: Rp {bal:,.0f}")
+        except Exception as exc:  # noqa: BLE001
+            print(f"   (diagnostik HPP dilewati: {str(exc)[:120]})")
+            self.env.invalidate_all()
 
 
 def run(env):
