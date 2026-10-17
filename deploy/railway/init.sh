@@ -3,8 +3,11 @@
 set -uo pipefail
 DB="$ODOO_DB"
 # Odoo 19 memberi prioritas env PGUSER/PGHOST/PGPASSWORD/PGPORT di atas file config -> kosongkan, kirim lewat CLI.
-ODOO=(runuser -u odoo -- env -u PGUSER -u PGPASSWORD -u PGHOST -u PGPORT -u PGDATABASE
-      odoo -c /tmp/odoo.conf --db_host="$PGHOST" --db_port="$PGPORT" --db_user="$ODOO_PGUSER" --db_password="$ODOO_PGPASSWORD")
+# Catatan: sub-perintah `shell` harus tepat setelah `odoo`, opsi diletakkan sesudahnya.
+ODOO_PRE=(runuser -u odoo -- env -u PGUSER -u PGPASSWORD -u PGHOST -u PGPORT -u PGDATABASE)
+ODOO_OPTS=(-c /tmp/odoo.conf --db_host="$PGHOST" --db_port="$PGPORT" --db_user="$ODOO_PGUSER" --db_password="$ODOO_PGPASSWORD")
+odoo_srv()   { "${ODOO_PRE[@]}" odoo "${ODOO_OPTS[@]}" "$@"; }
+odoo_shell() { "${ODOO_PRE[@]}" odoo shell "${ODOO_OPTS[@]}" "$@"; }
 mark_get() { python3 /opt/batik/dbmark.py get "$1"; }
 mark_set() { python3 /opt/batik/dbmark.py set "$1"; }
 
@@ -16,13 +19,13 @@ EXTRA=(batik_id_tax batik_id_coretax batik_id_payroll auditlog account_financial
 
 if ! mark_get base; then
   echo ">> [1/5] base + bahasa Indonesia"
-  "${ODOO[@]}" -d "$DB" -i base --stop-after-init --without-demo=all --load-language=id_ID || exit 1
+  odoo_srv -d "$DB" -i base --stop-after-init --without-demo=all --load-language=id_ID || exit 1
   mark_set base
 fi
 if ! mark_get core; then
   echo ">> [2/5] company Indonesia/IDR lalu modul core"
-  "${ODOO[@]}" shell -d "$DB" --no-http < /mnt/scripts/provision/run_company.py || exit 1
-  "${ODOO[@]}" -d "$DB" -i "$CORE" --stop-after-init --without-demo=all || exit 1
+  odoo_shell -d "$DB" --no-http < /mnt/scripts/provision/run_company.py || exit 1
+  odoo_srv -d "$DB" -i "$CORE" --stop-after-init --without-demo=all || exit 1
   mark_set core
 fi
 if ! mark_get modules; then
@@ -30,7 +33,7 @@ if ! mark_get modules; then
   FAILED=()
   for m in "${EXTRA[@]}"; do
     echo "   - $m"
-    "${ODOO[@]}" -d "$DB" -i "$m" --stop-after-init --without-demo=all >"/tmp/install_$m.log" 2>&1 \
+    odoo_srv -d "$DB" -i "$m" --stop-after-init --without-demo=all >"/tmp/install_$m.log" 2>&1 \
       || { echo "     !! GAGAL $m"; tail -n 5 "/tmp/install_$m.log"; FAILED+=("$m"); }
   done
   [ ${#FAILED[@]} -gt 0 ] && echo "Modul gagal: ${FAILED[*]}"
@@ -38,7 +41,7 @@ if ! mark_get modules; then
 fi
 if ! mark_get provisioned; then
   echo ">> [4/5] provisioning (CoA, pajak, analytic, jurnal)"
-  "${ODOO[@]}" shell -d "$DB" --no-http < /mnt/scripts/provision/run_provision.py && mark_set provisioned
+  odoo_shell -d "$DB" --no-http < /mnt/scripts/provision/run_provision.py && mark_set provisioned
 fi
 if [ "${SEED_DEMO:-1}" = "1" ] && ! mark_get seeded; then
   if mark_get seed_started; then
@@ -47,7 +50,7 @@ if [ "${SEED_DEMO:-1}" = "1" ] && ! mark_get seeded; then
   else
     echo ">> [5/5] seed data demo (${DEMO_MONTHS} bulan x ${DEMO_ORDERS_PER_MONTH} order)"
     mark_set seed_started
-    "${ODOO[@]}" shell -d "$DB" --no-http < /mnt/scripts/provision/run_seed.py && mark_set seeded
+    odoo_shell -d "$DB" --no-http < /mnt/scripts/provision/run_seed.py && mark_set seeded
   fi
 fi
 echo ">> init selesai"
