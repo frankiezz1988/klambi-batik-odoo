@@ -30,9 +30,17 @@ fi
 : "${PGUSER:?PGUSER kosong}" "${PGPASSWORD:?PGPASSWORD kosong}" "${ADMIN_PASSWD:?ADMIN_PASSWD kosong}"
 export ODOO_DB="${ODOO_DB:-${PGDATABASE:-railway}}"
 export PGPORT="${PGPORT:-5432}"
+
+# Odoo menolak db_user=postgres. Buat/sinkronkan role aplikasi non-superuser lewat kredensial admin.
+export ODOO_PGUSER="${ODOO_PGUSER:-odoo_app}" ODOO_PGPASSWORD="${ODOO_PGPASSWORD:-$PGPASSWORD}"
+python3 /opt/batik/dbmark.py role || {
+  echo "!! gagal membuat role aplikasi; memakai PGUSER apa adanya"
+  export ODOO_PGUSER="$PGUSER" ODOO_PGPASSWORD="$PGPASSWORD"
+}
 export DEMO_MONTHS="${DEMO_MONTHS:-3}" DEMO_ORDERS_PER_MONTH="${DEMO_ORDERS_PER_MONTH:-30}"
 
 chown -R odoo:odoo /var/lib/odoo 2>/dev/null || true
+rm -f /tmp/odoo.conf   # sisa run sebelumnya (milik user odoo) tidak boleh ditimpa root di /tmp
 cat > /tmp/odoo.conf <<CONF
 [options]
 addons_path = /usr/lib/python3/dist-packages/odoo/addons,/mnt/oca-addons/account-financial-reporting,/mnt/oca-addons/account-financial-tools,/mnt/oca-addons/account-invoicing,/mnt/oca-addons/account-analytic,/mnt/oca-addons/account-reconcile,/mnt/oca-addons/server-tools,/mnt/oca-addons/mis-builder,/mnt/oca-addons/reporting-engine,/mnt/oca-addons/bank-statement-import,/mnt/custom-addons
@@ -40,8 +48,8 @@ data_dir = /var/lib/odoo
 admin_passwd = ${ADMIN_PASSWD}
 db_host = ${PGHOST}
 db_port = ${PGPORT}
-db_user = ${PGUSER}
-db_password = ${PGPASSWORD}
+db_user = ${ODOO_PGUSER}
+db_password = ${ODOO_PGPASSWORD}
 db_name = ${ODOO_DB}
 dbfilter = ^${ODOO_DB}\$
 list_db = False
