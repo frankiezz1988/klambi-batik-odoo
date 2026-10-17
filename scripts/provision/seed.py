@@ -674,7 +674,12 @@ class Seeder:
                     gf: [(4, g.id) for g in groups if g], "company_id": env.company.id,
                     "company_ids": [(6, 0, [env.company.id])]}
             env["res.users"].create(vals)
-        print("User demo: accountant / owner (read-only) / kasir  (password: demo1234)")
+        # Odoo 19: grup "Administrator" akuntansi tidak otomatis memberi menu "Accounting" (butuh Full Accounting Features)
+        adm, full = env.ref("base.user_admin", raise_if_not_found=False), env.ref("account.group_account_user", raise_if_not_found=False)
+        if adm and full:
+            adm.write({gf: [(4, full.id)]})
+            print("Admin: ditambah grup 'Show Full Accounting Features' (menu Accounting terlihat)")
+        print("User demo (login = email): accountant@batik-demo.example / owner@batik-demo.example / kasir@batik-demo.example  (password: demo1234)")
 
     def trial_check(self):
         self.env.cr.execute("""SELECT COALESCE(SUM(debit),0), COALESCE(SUM(credit),0) FROM account_move_line

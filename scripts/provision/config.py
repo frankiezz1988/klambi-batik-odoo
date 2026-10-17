@@ -8,12 +8,12 @@ DEMO_LOCK = os.environ.get("DEMO_LOCK", "0") == "1"
 
 COMPANY = {
     "name": os.environ.get("COMPANY_NAME", "Klambi Bali"),
-    "street": "Jl. Malioboro No. 1",
-    "city": "Yogyakarta",
-    "zip": "55213",
+    "street": "Jl. Raya Sesetan No. 88, Sesetan",
+    "city": "Denpasar",
+    "zip": "80223",
     "vat": "0123456789012000",  # NPWP 16 digit - DUMMY
     "email": "finance@batik-demo.example",
-    "phone": "+62 274 000000",
+    "phone": "+62 361 000000",
 }
 
 # ---- Pajak (acuan: PMK 131/2024 -> PPN 12% x DPP nilai lain 11/12 untuk BKP non-mewah = efektif 11%)
