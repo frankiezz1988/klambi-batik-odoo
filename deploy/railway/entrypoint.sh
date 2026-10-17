@@ -3,8 +3,31 @@
 # Variable yang dibutuhkan: PGHOST PGPORT PGUSER PGPASSWORD PGDATABASE (referensi dari service Postgres Railway),
 # ADMIN_PASSWD. Opsional: SEED_DEMO (default 1), DEMO_MONTHS, DEMO_ORDERS_PER_MONTH, PPH22_START, ODOO_DB.
 set -euo pipefail
-: "${PGHOST:?set PGHOST (referensi service Postgres)}"
-: "${PGUSER:?}" "${PGPASSWORD:?}" "${ADMIN_PASSWD:?set ADMIN_PASSWD}"
+
+# Diagnostik: tampilkan status variable (nilai hanya untuk yang bukan rahasia)
+echo ">> cek variable"
+for v in PGHOST PGPORT PGUSER PGDATABASE; do echo "   $v=${!v:-<KOSONG>}"; done
+for v in PGPASSWORD DATABASE_URL ADMIN_PASSWD; do
+  if [ -n "${!v:-}" ]; then echo "   $v=<ada>"; else echo "   $v=<KOSONG>"; fi
+done
+
+# Cadangan: bila PGHOST kosong tapi DATABASE_URL ada, pecah URL-nya
+if [ -z "${PGHOST:-}" ] && [ -n "${DATABASE_URL:-}" ]; then
+  echo ">> PGHOST kosong; memakai DATABASE_URL"
+  eval "$(python3 - <<'PY'
+import os, shlex
+from urllib.parse import urlparse, unquote
+u = urlparse(os.environ["DATABASE_URL"])
+vals = (("PGHOST", u.hostname), ("PGPORT", u.port or 5432), ("PGUSER", unquote(u.username or "")),
+        ("PGPASSWORD", unquote(u.password or "")), ("PGDATABASE", (u.path or "/").lstrip("/")))
+for k, v in vals:
+    print("export %s=%s" % (k, shlex.quote(str(v or ""))))
+PY
+)"
+fi
+
+: "${PGHOST:?PGHOST kosong. Di service Odoo tambahkan variable DATABASE_URL=\${{Postgres.DATABASE_URL}} (atau PGHOST dll)}"
+: "${PGUSER:?PGUSER kosong}" "${PGPASSWORD:?PGPASSWORD kosong}" "${ADMIN_PASSWD:?ADMIN_PASSWD kosong}"
 export ODOO_DB="${ODOO_DB:-${PGDATABASE:-railway}}"
 export PGPORT="${PGPORT:-5432}"
 export DEMO_MONTHS="${DEMO_MONTHS:-3}" DEMO_ORDERS_PER_MONTH="${DEMO_ORDERS_PER_MONTH:-30}"
