@@ -74,4 +74,14 @@ if ! mark_get postinit_v1 || [ -n "${BASE_URL:-}" ]; then
   odoo_shell -d "$DB" --no-http < /mnt/scripts/provision/run_postinit.py 2>&1 | grep -E "POST-INIT|Traceback|Error" || true
   mark_set postinit_v1
 fi
+# Patch idempoten setelah seed (tambahan tanpa reset). Ditandai selesai hanya bila tanpa [FAIL].
+if mark_get seeded && ! mark_get patch_channel_reports; then
+  echo ">> [patch] laporan MIS Laba Rugi per channel"
+  odoo_shell -d "$DB" --no-http < /mnt/scripts/provision/run_patch_channel_reports.py 2>&1 | tee /tmp/patch1.log
+  if grep -q '\[FAIL\]' /tmp/patch1.log; then
+    echo "!! patch laporan channel gagal (lihat log); akan dicoba lagi pada deploy berikutnya"
+  else
+    mark_set patch_channel_reports
+  fi
+fi
 echo ">> init selesai"
