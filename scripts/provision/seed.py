@@ -149,17 +149,27 @@ class Seeder:
         if "move_line_ids" in moves._fields:
             moves.move_line_ids.write({"date": when})
         d = when.date()
-        if self._stock_col is None:
-            self.env.cr.execute(
-                "SELECT 1 FROM information_schema.columns WHERE table_name='account_move' AND column_name='stock_move_id'")
-            self._stock_col = bool(self.env.cr.fetchone())
-            if not self._stock_col:
-                print("   !! kolom account_move.stock_move_id tidak ada: jurnal valuasi stok tidak di-redate")
-        if self._stock_col:
-            self.env.cr.execute("UPDATE account_move SET date=%s WHERE stock_move_id = ANY(%s)", (d, moves.ids))
-            self.env.cr.execute(
-                "UPDATE account_move_line SET date=%s WHERE move_id IN "
-                "(SELECT id FROM account_move WHERE stock_move_id = ANY(%s))", (d, moves.ids))
+        am_ids = set()
+        SM, AM = self.env["stock.move"], self.env["account.move"]
+        for f in SM._fields.values():   # stock.move -> account.move (nama field beda antar versi Odoo)
+            if f.type in ("one2many", "many2many", "many2one") and f.comodel_name == "account.move" and f.name != "invoice_line_ids":
+                try:
+                    am_ids.update(moves.mapped(f.name).ids)
+                except Exception:  # noqa: BLE001
+                    pass
+        for f in AM._fields.values():   # account.move -> stock.move
+            if f.type in ("many2one", "many2many", "one2many") and f.comodel_name == "stock.move" and f.store:
+                try:
+                    am_ids.update(AM.search([(f.name, "in", moves.ids)]).ids)
+                except Exception:  # noqa: BLE001
+                    pass
+        if am_ids:
+            ids = list(am_ids)
+            self.env.cr.execute("UPDATE account_move SET date=%s WHERE id = ANY(%s)", (d, ids))
+            self.env.cr.execute("UPDATE account_move_line SET date=%s WHERE move_id = ANY(%s)", (d, ids))
+        elif not self._stock_col:
+            self._stock_col = True  # cetak peringatan sekali saja
+            print("   !! tidak menemukan relasi stock.move <-> account.move: jurnal valuasi stok tidak di-redate")
         self.env.invalidate_all()
 
     def _receive_or_deliver(self, picking, when):
@@ -439,7 +449,8 @@ class Seeder:
             bill = env["account.move"].create({
                 "move_type": "in_invoice", "partner_id": self.partners["utility"].id, "invoice_date": d, "date": d,
                 "ref": name, "invoice_line_ids": [(0, 0, {"name": name, "account_id": self.acc[acc],
-                                                          "quantity": 1, "price_unit": amt})]})
+                                                          "quantity": 1, "price_unit": amt,
+                                                          "analytic_distribution": {str(self.ana["CC:Kantor Pusat"]): 100}})]})
             bill.action_post()
             self._pay(bill, self.jr["BCA2"], d + dt.timedelta(days=1))
             env["account.bank.statement.line"].create({
@@ -457,7 +468,7 @@ class Seeder:
         platform = {"SHOPEE": "shopee_platform", "TOKPED": "tokped_platform", "TIKTOK": "tiktok_platform",
                     "INSTAGRAM": "gateway", "STORE": "bank"}
         wallet_acc = {c["code"]: self.acc[c["wallet"]] for c in C.CHANNELS}
-        count = 0
+        count = failed = 0
         for ch in C.CHANNELS:
             code = ch["code"]
             buckets = defaultdict(list)
@@ -469,6 +480,8 @@ class Seeder:
                     continue
                 gross = sum(i[1] for i in items)
                 dpp = sum(i[2] for i in items)
+                if gross <= 0 or dpp <= 0:
+                    continue  # bucket hanya berisi retur (neto <= 0): tidak ada yang diselesaikan
                 dist = {str(self.ana[code]): 100}
                 lines = [(wallet_acc[code], 0, gross, None, None)]
                 fees_total = 0
@@ -482,9 +495,15 @@ class Seeder:
                 lines.append((self.acc["pph22_prepaid"], pph22, 0, self.partners[platform[code]].id, None))
                 net = gross - fees_total - ppn_fee - pph22
                 lines.append((self.acc["bank_main"], net, 0, None, None))
-                self._journal_entry("SETL", sdate, f"Settlement {ch['name']} #{b + 1}", lines)
-                count += 1
-        print(f"Settlement: {count} jurnal settlement (fee + PPN masukan fee + PPh 22 dipungut)")
+                try:
+                    with self.env.cr.savepoint():
+                        self._journal_entry("SETL", sdate, f"Settlement {ch['name']} #{b + 1}", lines)
+                    count += 1
+                except Exception as exc:  # noqa: BLE001 - satu bucket gagal tidak boleh membatalkan semuanya
+                    failed += 1
+                    print(f"   !! settlement {ch['name']} #{b + 1} gagal: {str(exc)[:160]} (gross={gross}, net={net})")
+                    self.env.invalidate_all()
+        print(f"Settlement: {count} jurnal settlement (fee + PPN masukan fee + PPh 22 dipungut), {failed} gagal")
 
     # ------------------------------------------------------------------ monthly costs
     def _bill(self, partner_key, d, ref, account, amount, tax_keys, dist=None, nsfp=False, pay_after=10):
@@ -616,7 +635,13 @@ class Seeder:
                 rule = env["auditlog.rule"].create({
                     "name": f"Audit {model}", "model_id": mid.id, "log_type": "full",
                     "log_read": False, "log_create": True, "log_write": True, "log_unlink": True})
-                rule.subscribe()
+                for meth in ("subscribe", "action_subscribe"):
+                    if hasattr(rule, meth):
+                        getattr(rule, meth)()
+                        break
+                else:
+                    if "state" in rule._fields:
+                        rule.write({"state": "subscribed"})
             print(f"Audit trail: rule dipasang untuk {len(models)} model")
             # aktivitas contoh agar Audit Log tidak kosong saat demo
             prods = list(self.products.values())[:3]
