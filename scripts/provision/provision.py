@@ -1,11 +1,15 @@
 """Provisioning master data: company, CoA retail overlay, pajak ID, analytic channel, jurnal, kategori produk, MIS."""
 import csv
+import datetime as dt
 import os
+
+from dateutil.relativedelta import relativedelta
 
 import config as C
 from common import Steps, load_registry, save_registry
 
 DATA_DIR = os.environ.get("BATIK_DATA_DIR", "/mnt/data")
+MONTH_STARTS = [C.START.replace(day=1) + relativedelta(months=i) for i in range(4)]
 
 
 # --------------------------------------------------------------------------- company
@@ -31,7 +35,15 @@ def setup_company(env):
         partner.l10n_id_pkp = True
     admin = env.ref("base.user_admin")
     lang = env["res.lang"].search([("code", "=", "id_ID")], limit=1)
-    admin.write({"tz": "Asia/Jakarta", **({"lang": "id_ID"} if lang else {})})
+    admin.write({"tz": C.COMPANY["tz"], **({"lang": "id_ID"} if lang else {})})
+    company.partner_id.write({"tz": C.COMPANY["tz"], "street2": C.COMPANY.get("street2", "")})
+    usd = env.ref("base.USD", raise_if_not_found=False)
+    if usd and usd.active:
+        try:
+            with env.cr.savepoint():
+                usd.active = False   # demo hanya rupiah
+        except Exception as exc:  # noqa: BLE001
+            print("USD tidak bisa dinonaktifkan:", str(exc)[:80])
     print(f"Company: {company.name} | {company.country_id.code} | {company.currency_id.name}")
 
 
@@ -140,6 +152,11 @@ def setup_taxes(env, acc):
         "pph42": ensure_tax(env, "PPh 4(2) Sewa 10% (dipotong)", -C.PPH42_SEWA_RATE, "purchase", acc["pph42"], "PPh"),
     }
     save_registry(env, {"tax": {k: v.id for k, v in t.items()}})
+    # satu set pajak saja: jadikan default perusahaan, arsipkan bawaan l10n_id yang duplikatif (PPN 11% efektif sudah ada)
+    co = env.company
+    co.write({"account_sale_tax_id": t["ppn_out"].id, "account_purchase_tax_id": t["ppn_in"].id})
+    others = env["account.tax"].search([("id", "not in", [v.id for v in t.values()]), ("company_id", "=", co.id)])
+    others.write({"active": False})
     print("Pajak: " + "; ".join(v.name for v in t.values()))
 
 
@@ -150,8 +167,12 @@ def setup_analytic(env):
     plan_cc = plan_model.search([("name", "=", "Cost Center")], limit=1) or plan_model.create({"name": "Cost Center"})
     reg = {}
     for ch in C.CHANNELS:
-        a = acc_model.search([("name", "=", ch["name"]), ("plan_id", "=", plan_ch.id)], limit=1) \
-            or acc_model.create({"name": ch["name"], "code": ch["code"], "plan_id": plan_ch.id})
+        a = acc_model.search([("code", "=", ch["code"]), ("plan_id", "=", plan_ch.id)], limit=1) \
+            or acc_model.search([("name", "=", ch["name"]), ("plan_id", "=", plan_ch.id)], limit=1)
+        if a:
+            a.write({"name": ch["name"], "code": ch["code"]})
+        else:
+            a = acc_model.create({"name": ch["name"], "code": ch["code"], "plan_id": plan_ch.id})
         reg[ch["code"]] = a.id
     for cc in C.COST_CENTERS:
         a = acc_model.search([("name", "=", cc), ("plan_id", "=", plan_cc.id)], limit=1) \
@@ -230,8 +251,9 @@ def setup_mis(env):
         Kpi.create({"report_id": bs.id, "sequence": i * 10, "name": name, "description": desc, "expression": expr})
     for rep, title in ((pl, "Laba Rugi Bulanan"), (bs, "Neraca Bulanan")):
         periods = [
-            (0, 0, {"name": f"M-{i}" if i else "Bulan ini", "mode": "relative", "type": "m", "offset": -i, "duration": 1})
-            for i in range(5, -1, -1)
+            (0, 0, {"name": f"{d:%b %Y}", "mode": "fix", "manual_date_from": d,
+                    "manual_date_to": (d + relativedelta(months=1)) - dt.timedelta(days=1)})
+            for d in MONTH_STARTS
         ]
         env["mis.report.instance"].create({
             "name": title, "report_id": rep.id, "company_id": env.company.id,
@@ -264,7 +286,10 @@ def setup_asset_profile(env, acc):
             "account_expense_depreciation_id": acc["depreciation"],
             "journal_id": jr["ASET"],
             "method": "linear", "method_time": "year", "method_number": 4, "method_period": "month",
+            "prorata": True,    # mulai dari tanggal perolehan (bukan 1 Januari) -> tidak ada penyusutan kejar-tayang bulan pertama
         })
+    if "prorata" in prof._fields and not prof.prorata:
+        prof.prorata = True
     save_registry(env, {"asset_profile": prof.id})
     print("Profil aset tetap dibuat:", prof.name)
 
@@ -273,26 +298,86 @@ def setup_budget(env):
     """OCA mis_builder_budget: anggaran bulanan untuk KPI template Laba Rugi."""
     Budget, Item = env["mis.budget"], env["mis.budget.item"]
     report = env["mis.report"].search([("name", "=", "Laba Rugi - Retail Batik")], limit=1)
-    if not report or Budget.search([("name", "=", "Anggaran Operasional (DEMO)")], limit=1):
+    if not report or Budget.search([("name", "ilike", "Anggaran Operasional")], limit=1):
         return
-    import datetime as dt
-    from dateutil.relativedelta import relativedelta
-    first = dt.date.today().replace(day=1)
-    start = first - relativedelta(months=C.MONTHS - 1)
-    budget = Budget.create({"name": "Anggaran Operasional (DEMO)", "report_id": report.id,
-                            "date_from": start, "date_to": first + relativedelta(months=1, days=-1)})
-    plan = {"pendapatan": 75_000_000, "hpp": 35_000_000, "beban_channel": 22_000_000, "beban_umum": 48_000_000}
+    start = MONTH_STARTS[0]
+    budget = Budget.create({"name": "Anggaran Operasional 2026 (DEMO)", "report_id": report.id,
+                            "date_from": start, "date_to": MONTH_STARTS[-1] + relativedelta(months=1, days=-1)})
+    plans = [
+        {"pendapatan": 210_000_000, "hpp": 100_000_000, "beban_channel": 52_000_000, "beban_umum": 60_000_000},
+        {"pendapatan": 250_000_000, "hpp": 120_000_000, "beban_channel": 62_000_000, "beban_umum": 63_000_000},
+        {"pendapatan": 290_000_000, "hpp": 138_000_000, "beban_channel": 72_000_000, "beban_umum": 65_000_000},
+        {"pendapatan": 330_000_000, "hpp": 158_000_000, "beban_channel": 82_000_000, "beban_umum": 66_000_000},
+    ]
     kpis = {k.name: k for k in report.kpi_ids}
-    for i in range(C.MONTHS):
+    for i in range(4):
         m0 = start + relativedelta(months=i)
         m1 = m0 + relativedelta(months=1, days=-1)
-        for name, amount in plan.items():
+        for name, amount in plans[i].items():
             kpi = kpis.get(name)
             if kpi and kpi.expression_ids:
                 Item.create({"budget_id": budget.id, "kpi_expression_id": kpi.expression_ids[0].id,
                              "date_from": m0, "date_to": m1, "amount": amount})
-    print("Anggaran MIS dibuat dengan", C.MONTHS, "bulan x", len(plan), "KPI")
+    print("Anggaran MIS dibuat: 4 bulan x 4 KPI")
 
+
+
+# --------------------------------------------------------------------------- gudang, lokasi, price list, POS
+def setup_infra(env):
+    """Gudang Utama (terima 2 langkah: Sortase -> Stok Utama) + lokasi Marketplace; gudang Toko Denpasar; akun valuasi
+    lokasi virtual (scrap / selisih opname); price list; metode bayar POS + konfigurasi kasir."""
+    reg = load_registry(env)
+    acc, jr = reg["acc"], reg["journal"]
+    WH = env["stock.warehouse"]
+    wh = WH.search([], order="id", limit=1)
+    wh.write({"name": "Gudang Utama", "code": "WH", "reception_steps": "two_steps"})
+    wh.wh_input_stock_loc_id.name = "Sortase (QC)"
+    wh.lot_stock_id.name = "Stok Utama"
+    Loc = env["stock.location"]
+    mkt = Loc.search([("name", "=", "Marketplace"), ("location_id", "=", wh.view_location_id.id)], limit=1) or Loc.create(
+        {"name": "Marketplace", "location_id": wh.view_location_id.id, "usage": "internal"})
+    tko = WH.search([("code", "=", "TKO")], limit=1) or WH.create({"name": "Toko Denpasar", "code": "TKO"})
+    tko.lot_stock_id.name = "Stok Toko"
+    # akun valuasi lokasi virtual: scrap -> Persediaan Rusak/Hilang; selisih opname -> Selisih Persediaan
+    for loc, key in ((env.ref("stock.stock_location_scrapped", raise_if_not_found=False), "cogs_shrink"),):
+        if loc and "valuation_account_id" in loc._fields:
+            loc.valuation_account_id = acc[key]
+    inv_loss = Loc.search([("usage", "=", "inventory"), ("company_id", "in", (env.company.id, False))], limit=1)
+    if inv_loss and "valuation_account_id" in inv_loss._fields:
+        inv_loss.valuation_account_id = acc["cogs_adjust"]
+    # price list aktif
+    try:
+        cfg = env["res.config.settings"].create({"group_product_pricelist": True})
+        cfg.execute()
+    except Exception as exc:  # noqa: BLE001
+        print("   (pengaturan price list dilewati:", str(exc)[:100], ")")
+    # POS
+    PM = env["pos.payment.method"]
+    methods = {}
+    for name, jtype, jcode in (("Tunai", "cash", "KTOK"), ("QRIS", "bank", "QRIS"), ("Kartu Debit (EDC)", "bank", "QRIS")):
+        pm = PM.search([("name", "=", name)], limit=1) or PM.create({"name": name, "type": jtype, "journal_id": jr[jcode]})
+        methods[name] = pm.id
+    Cfg = env["pos.config"]
+    cfg_pos = Cfg.search([("name", "=", "Kasir Toko Denpasar")], limit=1)
+    if not cfg_pos:
+        cfg_pos = Cfg.create({"name": "Kasir Toko Denpasar", "picking_type_id": tko.pos_type_id.id,
+                              "payment_method_ids": [(6, 0, list(methods.values()))],
+                              "invoice_journal_id": jr.get("INV") or env["account.journal"].search([("code", "=", "INV")], limit=1).id})
+    # produk "Tips" bawaan POS tidak dipakai di demo
+    for p in env["product.product"].with_context(active_test=False).search([("default_code", "=", "TIPS")]):
+        vals = {"sale_ok": False}
+        if "available_in_pos" in p._fields:
+            vals["available_in_pos"] = False
+        p.write(vals)
+    # rapikan jurnal bawaan yang tidak dipakai
+    for code in ("BNK1", "CSH1"):
+        j = env["account.journal"].search([("code", "=", code)], limit=1)
+        if j and not env["account.move.line"].search_count([("journal_id", "=", j.id)]):
+            j.active = False
+    save_registry(env, {"wh": {"main": wh.id, "tko": tko.id, "mkt_loc": mkt.id, "main_stock": wh.lot_stock_id.id,
+                              "main_input": wh.wh_input_stock_loc_id.id, "tko_stock": tko.lot_stock_id.id},
+                        "pos": {"config": cfg_pos.id, "methods": methods}})
+    print(f"Gudang: {wh.name} (Sortase -> Stok Utama, Marketplace), {tko.name}; POS: {cfg_pos.name}")
 
 # --------------------------------------------------------------------------- orchestrator
 def run(env):
@@ -317,6 +402,8 @@ def run(env):
         setup_payroll_params(env, acc)
     with s.step("Profil aset tetap (OCA account_asset_management)"):
         setup_asset_profile(env, acc)
+    with s.step("Gudang, lokasi, price list, POS"):
+        setup_infra(env)
     with s.step("Anggaran MIS (OCA mis_builder_budget)"):
         setup_budget(env)
     return s.summary()

@@ -53,6 +53,25 @@ if mode == "reset":
     print("RESET: schema public dikosongkan (token=%s)" % token)
     sys.exit(10)
 
+if mode in ("own", "reset-force"):
+    app_user = os.environ["ODOO_PGUSER"]
+    cur = connect(db).cursor()
+    if mode == "reset-force":      # pasca restore gagal: kosongkan lagi agar jalur build mulai dari DB bersih
+        cur.execute("drop schema public cascade")
+        cur.execute("create schema public")
+        sys.exit(0)
+    cur.execute("select tablename from pg_tables where schemaname='public'")
+    for (n,) in cur.fetchall():
+        cur.execute(sql.SQL("ALTER TABLE public.{} OWNER TO {}").format(sql.Identifier(n), sql.Identifier(app_user)))
+    cur.execute("select sequencename from pg_sequences where schemaname='public'")
+    for (n,) in cur.fetchall():
+        cur.execute(sql.SQL("ALTER SEQUENCE public.{} OWNER TO {}").format(sql.Identifier(n), sql.Identifier(app_user)))
+    cur.execute("select viewname from pg_views where schemaname='public'")
+    for (n,) in cur.fetchall():
+        cur.execute(sql.SQL("ALTER VIEW public.{} OWNER TO {}").format(sql.Identifier(n), sql.Identifier(app_user)))
+    print("kepemilikan objek public dialihkan ke %s" % app_user)
+    sys.exit(0)
+
 if mode == "role":
     app_user = os.environ["ODOO_PGUSER"]
     app_pw = os.environ["ODOO_PGPASSWORD"]

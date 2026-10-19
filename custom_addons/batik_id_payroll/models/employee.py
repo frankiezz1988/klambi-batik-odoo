@@ -17,6 +17,7 @@ class BtkEmployee(models.Model):
     basic_salary = fields.Float(string="Gaji pokok", required=True)
     allowance = fields.Float(string="Tunjangan tetap")
     join_date = fields.Date()
+    analytic_account_id = fields.Many2one("account.analytic.account", string="Cost center")
 
     @api.depends("ptkp")
     def _compute_ter(self):

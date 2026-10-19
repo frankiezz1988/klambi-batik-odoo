@@ -33,7 +33,7 @@ make snapshot         # laporan statis ke ./site  (buka site/index.html)
 ```
 
 Langkah terpisah: `make oca | build | bootstrap | provision | seed`. Ulang dari nol: `make reset`.
-Ukuran data: `DEMO_MONTHS` (default 6) dan `DEMO_ORDERS_PER_MONTH` (default 90) di `.env`.
+Data demo: 1 Jul – 17 Okt 2026 (±1.100 order, 6 channel, deterministik). Seed penuh ±35 menit; untuk Railway/VPS dipakai dump siap-restore (`deploy/seed/`, dibuat dengan `scripts/build_dump.sh`).
 
 User demo (password `demo1234`): `accountant@batik-demo.example`, `owner@batik-demo.example` (read-only/auditor), `kasir@batik-demo.example`.
 
@@ -98,5 +98,3 @@ Detail di `docs/CLOUDFLARE.md`. Ringkas:
 - Ekspor XML Coretax **eksperimental**: skema belum diverifikasi terhadap spesifikasi DJP. Di Coretax, NSFP diterbitkan sistem saat faktur ditandatangani, sehingga modul menyediakan *impor* NSFP, bukan pengelolaan rentang.
 - Tarif/batas BPJS dan tabel TER perlu dicek ulang terhadap regulasi tahun berjalan.
 - Addon custom belum pernah dipasang di Odoo nyata (hanya cek sintaks/XML).
-
-#

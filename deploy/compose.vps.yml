@@ -29,7 +29,6 @@ services:
   odoo:
     build:
       context: ..
-      dockerfile: Dockerfile.dev
       args:
         ODOO_VERSION: ${ODOO_VERSION:-19.0}
     image: batik-odoo:${STACK}

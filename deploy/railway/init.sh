@@ -11,12 +11,32 @@ odoo_shell() { "${ODOO_PRE[@]}" odoo shell "${ODOO_OPTS[@]}" "$@"; }
 mark_get() { python3 /opt/batik/dbmark.py get "$1"; }
 mark_set() { python3 /opt/batik/dbmark.py set "$1"; }
 
-CORE="account,l10n_id,sale_management,purchase,stock,stock_account,stock_landed_costs"
+CORE="account,l10n_id,sale_management,purchase,stock,stock_account,stock_landed_costs,mrp,mrp_subcontracting,point_of_sale"
 EXTRA=(batik_id_tax batik_id_coretax batik_id_payroll auditlog account_financial_report account_tax_balance
   partner_statement mis_builder mis_builder_cash_flow account_analytic_required account_invoice_constraint_chronology
   account_journal_lock_date account_lock_date_update account_fiscal_year account_move_template report_xlsx
   account_asset_management mis_builder_budget account_statement_base account_reconcile_oca account_statement_import_file)
 
+# [0] Jalur dump (default): database demo sudah jadi (dibangun & divalidasi di build), tinggal di-restore. Jauh lebih cepat dan
+# deterministik daripada seed ulang. Hanya dijalankan pada DB kosong (belum ada tanda base). Nonaktifkan: SEED_MODE=build.
+SEED_DIR=/opt/batik/seed
+if ! mark_get base && [ "${SEED_MODE:-dump}" = "dump" ] && [ -f "$SEED_DIR/klambi.sql.gz" ]; then
+  echo ">> [0] restore dump database demo (+ filestore)"
+  if PGPASSWORD="$PGPASSWORD" gunzip -c "$SEED_DIR/klambi.sql.gz" | PGPASSWORD="$PGPASSWORD" psql -q -v ON_ERROR_STOP=1 \
+        -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$DB" >/tmp/restore.log 2>&1; then
+    # objek hasil restore dimiliki admin -> serahkan ke role aplikasi
+    python3 /opt/batik/dbmark.py own || echo "!! serah-terima kepemilikan gagal"
+    if [ -f "$SEED_DIR/filestore.tgz" ]; then
+      mkdir -p "/var/lib/odoo/filestore/$DB" && tar -xzf "$SEED_DIR/filestore.tgz" -C "/var/lib/odoo/filestore/$DB" \
+        && chown -R odoo:odoo /var/lib/odoo
+    fi
+    echo ">> restore selesai"
+  else
+    echo "!! restore dump GAGAL (lihat /tmp/restore.log di bawah); lanjut ke jalur build"
+    tail -n 15 /tmp/restore.log
+    python3 /opt/batik/dbmark.py reset-force || true
+  fi
+fi
 if ! mark_get base; then
   echo ">> [1/5] base + bahasa Indonesia"
   odoo_srv -d "$DB" -i base --stop-after-init --without-demo=true --load-language=id_ID || exit 1
@@ -58,7 +78,7 @@ if [ "${SEED_DEMO:-1}" = "1" ] && mark_get provisioned && ! mark_get seeded; the
     echo "   Ulang dari nol: set variable RESET_DB=<token baru, mis. run2> lalu deploy (database dikosongkan)."
     echo "   Atau terima data seed yang ada: set SEED_ACCEPT=1 lalu deploy (tanpa reset)."
   else
-    echo ">> [5/5] seed data demo (${DEMO_MONTHS} bulan x ${DEMO_ORDERS_PER_MONTH} order)"
+    echo ">> [5/5] seed data demo (Jul - 17 Okt 2026, ±35 menit; jalur dump lebih disarankan)"
     mark_set seed_started
     odoo_shell -d "$DB" --no-http < /mnt/scripts/provision/run_seed.py 2>&1 | tee /tmp/seed.log
     if grep -q '\[FAIL\]' /tmp/seed.log; then

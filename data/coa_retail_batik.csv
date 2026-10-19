@@ -34,7 +34,7 @@ other_income,4210101,Pendapatan Lain-lain,income_other,0,
 rounding_gain,4210102,Pendapatan Selisih Pembulatan,income_other,0,
 cogs,5110101,Harga Pokok Penjualan,expense_direct_cost,0,
 cogs_freight,5120101,Ongkos Angkut Pembelian,expense_direct_cost,0,
-cogs_adjust,5130101,Selisih / Penyesuaian Persediaan,expense_direct_cost,0,
+cogs_adjust,5130101,"Selisih Opname, Reject & Penyesuaian Persediaan",expense_direct_cost,0,
 cogs_shrink,5130102,Persediaan Rusak / Hilang,expense_direct_cost,0,
 fee_comm,6110101,Beban Komisi Marketplace,expense,0,always
 fee_service,6110102,Beban Biaya Layanan & Transaksi Marketplace,expense,0,always
@@ -51,3 +51,8 @@ utilities,6220102,"Beban Listrik, Air & Internet",expense,0,
 depreciation,6230101,Beban Penyusutan,expense_depreciation,0,
 bank_fee,6240101,Beban Administrasi Bank,expense,0,
 tax_expense,6910101,Beban PPh Final UMKM,expense,0,
+rent_wh,6220104,Beban Sewa Gudang,expense,0,
+maint,6220103,"Beban Perawatan, Perbaikan & Kebersihan",expense,0,
+entertain,6250101,Beban Jamuan & Representasi (PPN Tidak Dapat Dikreditkan),expense,0,
+fee_penalty,6110105,Beban Denda & Penyesuaian Marketplace,expense,0,always
+cash_diff,6240102,Selisih Kas Toko,expense,0,

@@ -25,6 +25,7 @@ COPY custom_addons /mnt/custom-addons
 COPY scripts /mnt/scripts
 COPY data /mnt/data
 COPY deploy/railway/ /opt/batik/
+COPY deploy/seed/ /opt/batik/seed/
 RUN chmod +x /opt/batik/entrypoint.sh /opt/batik/init.sh
 
 # Jalan sebagai root hanya untuk chown volume; Odoo sendiri dijalankan sebagai user `odoo` (runuser).

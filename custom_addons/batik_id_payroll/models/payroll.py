@@ -56,7 +56,8 @@ class PayrollRun(models.Model):
                 raise UserError(self.env._("Proses gaji sudah diposting."))
             run.line_ids.unlink()
             vals = [{"run_id": run.id, "employee_id": e.id}
-                    for e in self.env["btk.employee"].search([("company_id", "=", run.company_id.id)])]
+                    for e in self.env["btk.employee"].search([("company_id", "=", run.company_id.id)])
+                    if not e.join_date or e.join_date <= run.date]
             self.env["btk.payroll.line"].create(vals)
             run.state = "computed"
 
@@ -70,9 +71,22 @@ class PayrollRun(models.Model):
             pph = round(sum(run.line_ids.mapped("pph21")))
             net = gross - ee - pph
             name = run.name
-            lines = [
-                (0, 0, {"account_id": run.salary_account_id.id, "name": name, "debit": gross, "credit": 0}),
-                (0, 0, {"account_id": run.bpjs_expense_account_id.id, "name": f"{name} - BPJS pemberi kerja", "debit": er, "credit": 0}),
+            # beban gaji & BPJS dialokasikan per cost center karyawan (analytic)
+            by_cc = {}
+            for ln in run.line_ids:
+                cc = ln.employee_id.analytic_account_id.id or False
+                d = by_cc.setdefault(cc, [0.0, 0.0])
+                d[0] += ln.gross_salary
+                d[1] += ln.bpjs_employer
+            lines = []
+            for cc, (g, b) in by_cc.items():
+                dist = {"analytic_distribution": {str(cc): 100}} if cc else {}
+                lines.append((0, 0, {"account_id": run.salary_account_id.id, "name": name, "debit": round(g), "credit": 0, **dist}))
+                lines.append((0, 0, {"account_id": run.bpjs_expense_account_id.id, "name": f"{name} - BPJS pemberi kerja", "debit": round(b), "credit": 0, **dist}))
+            gross = sum(l[2]["debit"] for l in lines[0::2])
+            er = sum(l[2]["debit"] for l in lines[1::2])
+            net = gross - ee - pph
+            lines += [
                 (0, 0, {"account_id": run.pph21_account_id.id, "name": f"{name} - PPh 21", "debit": 0, "credit": pph}),
                 (0, 0, {"account_id": run.bpjs_payable_account_id.id, "name": f"{name} - utang BPJS", "debit": 0, "credit": ee + er}),
                 (0, 0, {"account_id": run.bank_account_id.id, "name": f"{name} - gaji bersih", "debit": 0, "credit": net}),
