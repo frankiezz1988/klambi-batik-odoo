@@ -2,7 +2,9 @@
 
 Demo akuntansi **Odoo Community 19.0 + OCA** untuk usaha retail batik fashion dengan channel **Store, Shopee, Tokopedia, TikTok Live, Instagram**. Fokus: HPP, cost tracking, audit trail, cashflow, neraca saldo/neraca, laba rugi, profitabilitas per channel, dan perpajakan Indonesia (PPN masukan/keluaran, e-Faktur/Coretax, PPh).
 
-> **Status:** kode ditulis dan lolos cek sintaks, tetapi **belum pernah dijalankan end-to-end terhadap Odoo sungguhan** (sandbox pembuatnya tidak punya Docker daemon). Skrip provisioning dan seed dibuat *fail-soft*: tiap langkah dilaporkan `[OK]`/`[FAIL]` di akhir, jadi error API antar-versi mudah dilokalisasi. Jalankan `make setup` dan kirim ringkasan `[FAIL]` bila ada.
+> **Status (20 Okt 2026):** pipeline sudah dijalankan end-to-end di sandbox (Odoo 19 + OCA) dan di Railway lewat restore dump. Data demo Jul–17 Okt 2026 diaudit
+> (neraca seimbang, stok tidak negatif, analytic 100%). Beberapa bagian README di bawah berasal dari fase awal dan sebagian usang (jumlah SKU/channel, `DEMO_MONTHS`);
+> rujukan terbaru: `docs/DEMO_SCOPE_AND_SCENARIOS.md`, `docs/DEVELOPMENT.md`, `docs/HANDOFF.md`. Panduan agen: `AGENTS.md`.
 
 ## Keputusan desain yang perlu Anda tahu
 
@@ -33,6 +35,8 @@ make snapshot         # laporan statis ke ./site  (buka site/index.html)
 ```
 
 Langkah terpisah: `make oca | build | bootstrap | provision | seed`. Ulang dari nol: `make reset`.
+Dokumentasi: cakupan & skenario demo di `docs/DEMO_SCOPE_AND_SCENARIOS.md`; pencocokan data antar lingkungan di `docs/VERIFY.md`.
+
 Data demo: 1 Jul – 17 Okt 2026 (±1.100 order, 6 channel, deterministik). Seed penuh ±35 menit; untuk Railway/VPS dipakai dump siap-restore (`deploy/seed/`, dibuat dengan `scripts/build_dump.sh`).
 
 User demo (password `demo1234`): `accountant@batik-demo.example`, `owner@batik-demo.example` (read-only/auditor), `kasir@batik-demo.example`.

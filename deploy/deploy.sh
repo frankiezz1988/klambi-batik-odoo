@@ -43,7 +43,7 @@ if ! "${COMPOSE[@]}" exec -T db psql -U "$PG_USER" -lqt | cut -d'|' -f1 | grep -
   fi
 else
   echo ">> DB ada -> update modul custom"
-  "${RUN[@]}" odoo -d "$ODOO_DB" -u batik_id_tax,batik_id_coretax,batik_id_payroll --stop-after-init || \
+  "${RUN[@]}" odoo -d "$ODOO_DB" -u batik_id_tax,batik_id_coretax,batik_id_payroll,batik_id_verify --stop-after-init || \
     echo "!! update modul custom gagal (lihat log)"
 fi
 

@@ -1,3 +1,4 @@
+# IMAGE UNTUK RAILWAY (root Dockerfile = yang dideteksi otomatis). Untuk lokal/VPS compose dipakai Dockerfile.dev.
 # Image untuk Railway: semua kode (OCA + custom + script) DI-BAKE ke image, karena Railway tidak
 # memakai bind mount dari repo. Pakai dengan variable service:  RAILWAY_DOCKERFILE_PATH=deploy/railway/Dockerfile
 ARG ODOO_VERSION=19.0
@@ -23,7 +24,8 @@ RUN mkdir -p /mnt/oca-addons \
 COPY custom_addons /mnt/custom-addons
 COPY scripts /mnt/scripts
 COPY data /mnt/data
-COPY deploy/railway/entrypoint.sh deploy/railway/init.sh deploy/railway/dbmark.py /opt/batik/
+COPY deploy/railway/ /opt/batik/
+COPY deploy/seed/ /opt/batik/seed/
 RUN chmod +x /opt/batik/entrypoint.sh /opt/batik/init.sh
 
 # Jalan sebagai root hanya untuk chown volume; Odoo sendiri dijalankan sebagai user `odoo` (runuser).

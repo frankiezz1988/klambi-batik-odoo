@@ -15,7 +15,8 @@ CORE="account,l10n_id,sale_management,purchase,stock,stock_account,stock_landed_
 EXTRA=(batik_id_tax batik_id_coretax batik_id_payroll auditlog account_financial_report account_tax_balance
   partner_statement mis_builder mis_builder_cash_flow account_analytic_required account_invoice_constraint_chronology
   account_journal_lock_date account_lock_date_update account_fiscal_year account_move_template report_xlsx
-  account_asset_management mis_builder_budget account_statement_base account_reconcile_oca account_statement_import_file)
+  account_asset_management mis_builder_budget account_statement_base account_reconcile_oca account_statement_import_file
+  batik_id_verify)
 
 # [0] Jalur dump (default): database demo sudah jadi (dibangun & divalidasi di build), tinggal di-restore. Jauh lebih cepat dan
 # deterministik daripada seed ulang. Hanya dijalankan pada DB kosong (belum ada tanda base). Nonaktifkan: SEED_MODE=build.

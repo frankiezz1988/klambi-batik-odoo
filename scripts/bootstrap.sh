@@ -7,7 +7,7 @@ DB="${ODOO_DB:-batik_demo}"
 COMPOSE="${COMPOSE_CMD:-${COMPOSE:-docker compose}}"
 RUN=($COMPOSE run --rm -T odoo)
 
-CORE="account,l10n_id,sale_management,purchase,stock,stock_account,stock_landed_costs"
+CORE="account,l10n_id,sale_management,purchase,stock,stock_account,stock_landed_costs,mrp,mrp_subcontracting,point_of_sale"
 # OCA + custom: dipasang satu per satu supaya 1 modul bermasalah tidak menggagalkan semuanya
 EXTRA_MODULES=(
   batik_id_tax
@@ -31,6 +31,7 @@ EXTRA_MODULES=(
   account_statement_base
   account_reconcile_oca
   account_statement_import_file
+  batik_id_verify
 )
 
 $COMPOSE up -d db

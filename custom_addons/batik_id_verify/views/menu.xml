@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="action_batik_verify_snapshot" model="ir.actions.act_url">
+    <field name="name">Unduh Snapshot Verifikasi Data</field>
+    <field name="url">/batik/verify/snapshot.zip</field>
+    <field name="target">self</field>
+  </record>
+  <menuitem id="menu_batik_verify_snapshot" name="Snapshot Verifikasi Data (CSV)"
+            parent="base.menu_custom" action="action_batik_verify_snapshot"
+            groups="base.group_system" sequence="900"/>
+</odoo>

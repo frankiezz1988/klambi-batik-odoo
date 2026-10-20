@@ -1,0 +1,15 @@
+[options]
+addons_path = SANDBOX_DIR/odoo/addons,SANDBOX_DIR/oca/account-financial-reporting,SANDBOX_DIR/oca/account-financial-tools,SANDBOX_DIR/oca/account-invoicing,SANDBOX_DIR/oca/account-analytic,SANDBOX_DIR/oca/account-reconcile,SANDBOX_DIR/oca/server-tools,SANDBOX_DIR/oca/server-ux,SANDBOX_DIR/oca/mis-builder,SANDBOX_DIR/oca/reporting-engine,SANDBOX_DIR/oca/bank-statement-import,/mnt/custom-addons
+data_dir = SANDBOX_DIR/data
+db_host = /var/tmp/pgb
+db_port = 5544
+db_user = odoo
+db_password = odoo
+list_db = False
+workers = 0
+max_cron_threads = 0
+limit_time_cpu = 0
+limit_time_real = 0
+limit_memory_hard = 0
+limit_memory_soft = 0
+http_port = 8069

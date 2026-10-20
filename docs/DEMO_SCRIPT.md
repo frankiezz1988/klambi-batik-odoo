@@ -1,5 +1,7 @@
 # Skenario demo Klambi Bali (±25 menit)
 
+> Ringkasan alur bicara. Cakupan lengkap, angka acuan, dan titik cocok UI per langkah: [`DEMO_SCOPE_AND_SCENARIOS.md`](DEMO_SCOPE_AND_SCENARIOS.md). Pencocokan data otomatis: [`VERIFY.md`](VERIFY.md).
+
 Data: **1 Jul – 17 Okt 2026**, 1 perusahaan (Klambi Bali, Denpasar), mata uang IDR saja, 2 gudang (Gudang Utama + Toko Denpasar),
 6 channel. Login `admin / admin` (ganti), `accountant@` (akuntan), `owner@` (read-only/auditor), `kasir@` (POS), password `demo1234`.
 
