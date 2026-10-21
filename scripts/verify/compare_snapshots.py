@@ -6,7 +6,7 @@ Pemakaian:
 
 A dan B boleh berupa folder snapshot atau berkas .zip. Hanya memakai pustaka standar Python 3.8+.
 Hasil: ringkasan di layar + DIR/report.txt, DIR/kpi_side_by_side.txt, DIR/diff_<dataset>.csv (satu per dataset yang berbeda).
-Kode keluar: 0 = identik (di luar dataset volatil), 1 = ada selisih, 2 = masukan tidak valid.
+Kode keluar: 0 = identik (di luar dataset volatil/info dan tabel sistem; --strict menonaktifkan pengecualian), 1 = ada selisih, 2 = masukan tidak valid.
 """
 import argparse
 import csv
@@ -66,6 +66,20 @@ def index(header, rows, keycols):
     return idx
 
 
+# Tabel sistem/teknis yang jumlah barisnya wajar berbeda antar instance (pemakaian, wizard sementara,
+# daftar modul, jejak audit akses). Baris-baris ini dikecualikan dari penilaian 'table_counts'
+# dan hanya dilaporkan sebagai informasi. Data bisnis dinilai oleh dataset lain (moves, stock, dst).
+SYSTEM_TABLE_PREFIX = (
+    "ir_module_", "ir_model_data", "ir_ui_", "ir_translation", "ir_asset", "ir_actions", "ir_act_",
+    "auditlog_http_", "auditlog_log", "bus_", "digest_", "discuss_channel", "mail_", "iap_",
+    "res_lang_install", "res_users_log", "res_users_settings", "res_users_apikeys", "res_device",
+    "account_move_reversal", "account_payment_register", "account_asset_compute", "stock_return_picking",
+    "base_language_install", "change_production_qty", "base_import_", "wizard_", "ir_cron", "ir_logging",
+)
+# Dataset yang hanya informasi (cermin aktivitas pengguna), tidak menggagalkan perbandingan.
+INFO_DATASETS = {"auditlog_summary"}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("a")
@@ -74,6 +88,7 @@ def main():
     ap.add_argument("--tol", type=float, default=0.005)
     ap.add_argument("--max-detail", type=int, default=15)
     ap.add_argument("--ignore", default="")
+    ap.add_argument("--strict", action="store_true", help="nilai semua dataset, tanpa pengecualian tabel sistem/info")
     ap.add_argument("--label-a", default="A")
     ap.add_argument("--label-b", default="B")
     args = ap.parse_args()
@@ -109,6 +124,14 @@ def main():
             total_bad += 0 if vol else 1
             continue
         (ha, ra), (hb, rb) = da[ds], db[ds]
+        skipped = 0
+        if ds == "table_counts" and not args.strict:
+            n0 = len(ra) + len(rb)
+            ra = [r for r in ra if not r[0].startswith(SYSTEM_TABLE_PREFIX)]
+            rb = [r for r in rb if not r[0].startswith(SYSTEM_TABLE_PREFIX)]
+            skipped = n0 - len(ra) - len(rb)
+        if ds in INFO_DATASETS and not args.strict:
+            vol = True
         keycols = meta.get(ds, {}).get("key") or [ha[0]]
         ia, ib = index(ha, ra, keycols), index(hb, rb, keycols)
         only_a = sorted(set(ia) - set(ib))
@@ -123,6 +146,8 @@ def main():
                 rowsdiff.extend((k, c, x, y) for c, x, y in bad)
         hdr_note = "" if ha == hb else "KOLOM BEDA"
         status = "OK" if not (only_a or only_b or changed or hdr_note) else ("DIFF (volatil)" if vol else "DIFF")
+        if skipped:
+            status += " [%d baris tabel sistem diabaikan]" % (skipped // 2)
         summary.append((ds, len(ra), len(rb), len(only_a), len(only_b), changed, status + (" " + hdr_note if hdr_note else ""), vol))
         if status.startswith("DIFF") and not vol:
             total_bad += 1
@@ -140,10 +165,10 @@ def main():
     p("%-26s %8s %8s %7s %7s %8s  %s" % ("dataset", "baris " + la[:3], "baris " + lb[:3], "hny-" + la[:3], "hny-" + lb[:3], "berubah", "status"))
     p("-" * 100)
     for ds, na, nb, oa, ob, ch, st, vol in summary:
-        p("%-26s %8s %8s %7s %7s %8s  %s%s" % (ds, na, nb, oa, ob, ch, st, "  [volatil: diagnostik]" if vol else ""))
+        p("%-26s %8s %8s %7s %7s %8s  %s%s" % (ds, na, nb, oa, ob, ch, st, "  [info/volatil: tidak dihitung]" if vol else ""))
     p("")
     for ds, vol, only_a, only_b, rowsdiff in details:
-        p("== %s%s" % (ds, "  (volatil, tidak dihitung)" if vol else ""))
+        p("== %s%s" % (ds, "  (info/volatil, tidak dihitung)" if vol else ""))
         for k in only_a[: args.max_detail]:
             p("   hanya di %s: %s" % (la, k))
         if len(only_a) > args.max_detail:

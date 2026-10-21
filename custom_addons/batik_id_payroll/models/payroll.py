@@ -14,7 +14,7 @@ class PayrollRun(models.Model):
     company_id = fields.Many2one("res.company", default=lambda s: s.env.company, required=True)
     currency_id = fields.Many2one(related="company_id.currency_id")
     state = fields.Selection([("draft", "Draft"), ("computed", "Terhitung"), ("posted", "Terposting")],
-                             default="draft", tracking=False)
+                             default="draft")
     line_ids = fields.One2many("btk.payroll.line", "run_id")
     move_id = fields.Many2one("account.move", readonly=True, copy=False)
     journal_id = fields.Many2one("account.journal", domain="[('type', '=', 'general')]", required=True,

@@ -39,6 +39,7 @@ Prinsip: **kode adalah sumber, dump adalah artefak build.** Data demo tidak pern
 | Gambar produk | `scripts/provision/art.py` | build ulang (filestore ikut berubah) |
 | Modul custom | `custom_addons/batik_id_*` | uji di sandbox; bila skema berubah, upgrade `-u` (lihat 7) |
 | Verifikasi data | `custom_addons/batik_id_verify`, `scripts/verify/*` | perbarui referensi bila dataset berubah |
+| Produksi jahit (batch, QC, HPP per batch) | `custom_addons/batik_id_production`, `scripts/provision/{config,supply,seed}.py`, `scripts/audit_prod.py`, `docs/PRODUKSI_JAHIT.md` | seed ulang → `audit_prod.py` harus 0 FAIL → dump + referensi baru → `RESET_DB` token baru |
 | Deploy Railway | `Dockerfile`, `deploy/railway/*` | push; uji di Railway |
 | Dokumen | `docs/*`, `README.md` | angka di dokumen harus dicocokkan dengan snapshot |
 
@@ -97,7 +98,7 @@ Diperiksa oleh `scripts/audit_v2.py` dan dataset `kpi` pada snapshot:
 - saldo GL piutang/hutang = Σ sisa item terbuka (subledger);
 - 100% baris pendapatan, HPP, dan beban punya analytic (Channel atau Cost Center);
 - hanya IDR aktif; 6 channel; omzet bulanan Rp 200–350 jt (Okt parsial s.d. 17); margin kotor ±45–55%;
-- GL persediaan ≈ Σ `total_value` produk (selisih diketahui Rp 34.686 = butir terbuka, bukan target);
+- GL persediaan ≈ Σ `total_value` produk (selisih diketahui Rp 40.005 = butir terbuka, bukan target);
 - semua lampiran/foto di DB ada di filestore (`filestore_integrity`).
 
 Garis waktu tetap: `C.START=2026-07-01` s.d. `C.END=2026-10-17`, saldo awal 30 Jun. Oktober sengaja **belum ditutup** (tanpa penyusutan/BPJS/PPh Final/rekap PPN Okt).

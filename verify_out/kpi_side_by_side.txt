@@ -1,0 +1,75 @@
+angka kontrol                                                                 sandbox                railway  
+dokumen_akunting|entry/posted                                                    1505                   1505  
+dokumen_akunting|in_invoice/posted                                                202                    202  
+dokumen_akunting|out_invoice/posted                                              1075                   1075  
+dokumen_akunting|out_refund/posted                                                 28                     28  
+hutang_usaha_total                                                      -183389615.33          -183389615.33  
+jumlah_dokumen|mo/confirmed                                                        10                     10  
+jumlah_dokumen|mo/done                                                            122                    122  
+jumlah_dokumen|picking/assigned                                                     8                      8  
+jumlah_dokumen|picking/cancel                                                      13                     13  
+jumlah_dokumen|picking/done                                                      1523                   1523  
+jumlah_dokumen|purchase_order/purchase                                            154                    154  
+jumlah_dokumen|sale_order/cancel                                                   13                     13  
+jumlah_dokumen|sale_order/sale                                                   1075                   1075  
+jumlah_order_per_bulan|2026-07                                                    227                    227  
+jumlah_order_per_bulan|2026-08                                                    312                    312  
+jumlah_order_per_bulan|2026-09                                                    335                    335  
+jumlah_order_per_bulan|2026-10                                                    201                    201  
+jurnal_credit_total                                                     5271801697.09          5271801697.09  
+jurnal_debit_total                                                      5271801697.09          5271801697.09  
+kas_bank_total                                                           237350092.63           237350092.63  
+laba_rugi_kumulatif                                                       53798384.36            53798384.36  
+laba_rugi_per_bulan|2026-07|1.pendapatan                                    223568310              223568310  
+laba_rugi_per_bulan|2026-07|2.hpp                                        -115664812.8           -115664812.8  
+laba_rugi_per_bulan|2026-07|3.biaya_operasional                             -87419499              -87419499  
+laba_rugi_per_bulan|2026-07|4.penyusutan                                   -950941.78             -950941.78  
+laba_rugi_per_bulan|2026-08|1.pendapatan                                    242887390              242887390  
+laba_rugi_per_bulan|2026-08|2.hpp                                        -125411457.6           -125411457.6  
+laba_rugi_per_bulan|2026-08|3.biaya_operasional                            -106294524             -106294524  
+laba_rugi_per_bulan|2026-08|4.penyusutan                                  -1348259.15            -1348259.15  
+laba_rugi_per_bulan|2026-09|1.pendapatan                                    290691740              290691740  
+laba_rugi_per_bulan|2026-09|2.hpp                                       -154489240.83          -154489240.83  
+laba_rugi_per_bulan|2026-09|3.biaya_operasional                            -111882764             -111882764  
+laba_rugi_per_bulan|2026-09|4.penyusutan                                  -1364583.33            -1364583.33  
+laba_rugi_per_bulan|2026-10|1.pendapatan                                    186691060              186691060  
+laba_rugi_per_bulan|2026-10|2.hpp                                       -103155447.15          -103155447.15  
+laba_rugi_per_bulan|2026-10|3.biaya_operasional                             -82058586              -82058586  
+neraca_per_tipe_akun|asset_cash                                          237350092.63           237350092.63  
+neraca_per_tipe_akun|asset_current                                       157967421.22           157967421.22  
+neraca_per_tipe_akun|asset_fixed                                          61836215.74            61836215.74  
+neraca_per_tipe_akun|asset_receivable                                     126004080.9            126004080.9  
+neraca_per_tipe_akun|equity                                                -292584400             -292584400  
+neraca_per_tipe_akun|liability_current                                    -53385410.8            -53385410.8  
+neraca_per_tipe_akun|liability_payable                                  -183389615.33          -183389615.33  
+omzet_dpp_per_bulan_channel|2026-07|B2B                                      66546470               66546470  
+omzet_dpp_per_bulan_channel|2026-07|Instagram & WhatsApp                     16792410               16792410  
+omzet_dpp_per_bulan_channel|2026-07|Shopee                                   44433360               44433360  
+omzet_dpp_per_bulan_channel|2026-07|TikTok Live                              23676030               23676030  
+omzet_dpp_per_bulan_channel|2026-07|Toko Denpasar                            58962130               58962130  
+omzet_dpp_per_bulan_channel|2026-07|Tokopedia                                16183900               16183900  
+omzet_dpp_per_bulan_channel|2026-08|B2B                                      43683280               43683280  
+omzet_dpp_per_bulan_channel|2026-08|Instagram & WhatsApp                     14854860               14854860  
+omzet_dpp_per_bulan_channel|2026-08|Shopee                                   59996340               59996340  
+omzet_dpp_per_bulan_channel|2026-08|TikTok Live                              47290650               47290650  
+omzet_dpp_per_bulan_channel|2026-08|Toko Denpasar                            72056390               72056390  
+omzet_dpp_per_bulan_channel|2026-08|Tokopedia                                15949210               15949210  
+omzet_dpp_per_bulan_channel|2026-09|B2B                                      73380920               73380920  
+omzet_dpp_per_bulan_channel|2026-09|Instagram & WhatsApp                     28476000               28476000  
+omzet_dpp_per_bulan_channel|2026-09|Shopee                                   62103640               62103640  
+omzet_dpp_per_bulan_channel|2026-09|TikTok Live                              54210960               54210960  
+omzet_dpp_per_bulan_channel|2026-09|Toko Denpasar                            65894840               65894840  
+omzet_dpp_per_bulan_channel|2026-09|Tokopedia                                14986960               14986960  
+omzet_dpp_per_bulan_channel|2026-10|B2B                                      56901830               56901830  
+omzet_dpp_per_bulan_channel|2026-10|Instagram & WhatsApp                     12230630               12230630  
+omzet_dpp_per_bulan_channel|2026-10|Shopee                                   37421390               37421390  
+omzet_dpp_per_bulan_channel|2026-10|TikTok Live                              32201350               32201350  
+omzet_dpp_per_bulan_channel|2026-10|Toko Denpasar                            41944330               41944330  
+omzet_dpp_per_bulan_channel|2026-10|Tokopedia                                 9101150                9101150  
+omzet_dpp_per_bulan|2026-07                                                 226594300              226594300  
+omzet_dpp_per_bulan|2026-08                                                 253830730              253830730  
+omzet_dpp_per_bulan|2026-09                                                 299053320              299053320  
+omzet_dpp_per_bulan|2026-10                                                 189800680              189800680  
+persediaan_gl_1130101                                                    107784281.62           107784281.62  
+piutang_usaha_total                                                       126004080.9            126004080.9  
+qty_stok_internal_total                                                        1437.8                 1437.8  

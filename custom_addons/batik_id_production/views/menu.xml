@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <menuitem id="menu_btk_prod_root" name="Produksi Jahit" web_icon="stock,static/description/icon.png"
+            groups="stock.group_stock_user" sequence="35"/>
+  <menuitem id="menu_btk_batch" name="Batch Produksi" parent="menu_btk_prod_root" action="action_btk_batch" sequence="10"/>
+  <menuitem id="menu_btk_qc" name="Inspeksi QC" parent="menu_btk_prod_root" action="action_btk_qc" sequence="20"/>
+  <menuitem id="menu_btk_material" name="Saldo Bahan di Penjahit" parent="menu_btk_prod_root" action="action_btk_batch_material" sequence="30"/>
+  <menuitem id="menu_btk_prod_report" name="Analisis" parent="menu_btk_prod_root" sequence="40"/>
+  <menuitem id="menu_btk_batch_analysis" name="HPP per Batch &amp; Performa Penjahit" parent="menu_btk_prod_report" action="action_btk_batch_analysis" sequence="10"/>
+  <menuitem id="menu_btk_defect_analysis" name="Analisis Cacat QC" parent="menu_btk_prod_report" action="action_btk_qc_line" sequence="20"/>
+  <menuitem id="menu_btk_prod_conf" name="Konfigurasi" parent="menu_btk_prod_root" groups="stock.group_stock_manager" sequence="90"/>
+  <menuitem id="menu_btk_defect" name="Jenis Cacat QC" parent="menu_btk_prod_conf" action="action_btk_defect" sequence="10"/>
+</odoo>

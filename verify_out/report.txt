@@ -1,0 +1,96 @@
+PERBANDINGAN SNAPSHOT
+  sandbox  : deploy/seed/reference_snapshot.zip | db=kl2_v | odoo=19.0 | 2026-10-19 23:48:49 UTC | asof=2026-10-17
+  railway  : C:/Users/ACER/downloads/snapshot_railway_20261020_111248.zip | db=railway | odoo=19.0-20261015 | 2026-10-20 11:12:48 UTC | asof=2026-10-17
+
+dataset                    baris san baris rai hny-san hny-rai  berubah  status
+----------------------------------------------------------------------------------------------------
+accounts                        175      175       0       0        0  OK
+aging                            48       48       0       0        0  OK
+analytic_accounts                 9        9       0       0        0  OK
+asset_lines                     246      246       0       0        0  OK
+assets                            5        5       0       0        0  OK
+auditlog_rules                   12       12       0       0        0  OK
+auditlog_summary                  8        8       0       0        1  DIFF
+bank_statement_lines              5        5       0       0        0  OK
+boms                             24       24       0       0        0  OK
+budget_items                     16       16       0       0        0  OK
+company                           1        1       0       0        0  OK
+config_env                        1        2       0       1        1  DIFF (volatil)  [volatil: diagnostik]
+currencies_active                 1        1       0       0        0  OK
+employees                         9        9       0       0        0  OK
+filestore_integrity               2        2       0       0        0  OK
+init_marks                       14       14       0       0        0  OK
+journals                         21       21       0       0        0  OK
+kpi                              74       74       0       0        0  OK
+mis_report_kpis                  26       26       0       0        0  OK
+modules                         118      118       0       0        0  OK
+move_lines                    12499    12499       0       0        0  OK
+moves                          2810     2810       0       0        0  OK
+mrp_productions                 132      132       0       0        0  OK
+partners                        401      401       0       0        0  OK
+payments                       1237     1237       0       0        0  OK
+payroll_lines                    26       26       0       0        0  OK
+payroll_runs                      3        3       0       0        0  OK
+pickings                       1544     1544       0       0        0  OK
+pl_by_analytic                   99       99       0       0        0  OK
+products                         26       26       0       0        0  OK
+purchase_lines                  246      246       0       0        0  OK
+purchase_orders                 154      154       0       0        0  OK
+sale_lines                     2070     2070       0       0        0  OK
+sale_orders                    1088     1088       0       0        0  OK
+scraps                           24       24       0       0        0  OK
+sequences                         3        3       0       0        0  OK
+stock_moves                    3975     3975       0       0        0  OK
+stock_quants                     67       67       0       0        0  OK
+table_counts                    469      469       0       0       16  DIFF
+table_counts_volatile           210      210       0       0       23  DIFF (volatil)  [volatil: diagnostik]
+taxes                            22       22       0       0        0  OK
+trial_balance                    48       48       0       0        0  OK
+trial_balance_monthly           172      172       0       0        0  OK
+users                             7        7       0       0        0  OK
+valuation                        23       23       0       0        0  OK
+
+== auditlog_summary
+   res.partner|write [n]: sandbox='4'  railway='5'
+
+== config_env  (volatil, tidak dihitung)
+   hanya di railway: web.base.url.freeze
+   web.base.url [value]: sandbox='http://localhost:8069'  railway='https://klambi-bali.odoo.kolondam.dev'
+
+== table_counts
+   account_move_reversal_move [rows]: sandbox='28'  railway='0'
+   account_move_reversal_new_move [rows]: sandbox='28'  railway='0'
+   account_payment_register_move_line_rel [rows]: sandbox='1237'  railway='0'
+   auditlog_http_request [rows]: sandbox='0'  railway='1'
+   auditlog_http_session [rows]: sandbox='0'  railway='1'
+   auditlog_log [rows]: sandbox='66'  railway='67'
+   auditlog_log_line [rows]: sandbox='732'  railway='733'
+   digest_tip_res_users_rel [rows]: sandbox='0'  railway='4'
+   discuss_channel [rows]: sandbox='2'  railway='3'
+   discuss_channel_member [rows]: sandbox='5'  railway='7'
+   ir_model_data [rows]: sandbox='28084'  railway='28125'
+   ir_module_category [rows]: sandbox='108'  railway='119'
+   ir_module_module [rows]: sandbox='857'  railway='887'
+   ir_module_module_dependency [rows]: sandbox='1659'  railway='1716'
+   res_lang_install_rel [rows]: sandbox='1'  railway='0'
+   ... +1 selisih nilai lagi (lihat diff_table_counts.csv)
+
+== table_counts_volatile  (volatil, tidak dihitung)
+   account_asset_compute [rows]: sandbox='3'  railway='0'
+   account_move_reversal [rows]: sandbox='28'  railway='0'
+   account_payment_register [rows]: sandbox='1237'  railway='0'
+   base_language_install [rows]: sandbox='1'  railway='0'
+   bus_bus [rows]: sandbox='0'  railway='12'
+   change_production_qty [rows]: sandbox='3'  railway='0'
+   iap_account [rows]: sandbox='0'  railway='1'
+   ir_attachment [rows]: sandbox='628'  railway='632'
+   ir_config_parameter [rows]: sandbox='41'  railway='44'
+   ir_cron_progress [rows]: sandbox='0'  railway='22'
+   ir_cron_trigger [rows]: sandbox='4'  railway='0'
+   mail_followers [rows]: sandbox='0'  railway='1'
+   mail_followers_mail_message_subtype_rel [rows]: sandbox='0'  railway='1'
+   mail_mail [rows]: sandbox='0'  railway='4'
+   mail_message [rows]: sandbox='4285'  railway='4291'
+   ... +8 selisih nilai lagi (lihat diff_table_counts_volatile.csv)
+
+GAGAL: 2 dataset berbeda (lihat atas dan diff_*.csv).

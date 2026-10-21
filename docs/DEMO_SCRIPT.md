@@ -8,8 +8,8 @@ Data: **1 Jul – 17 Okt 2026**, 1 perusahaan (Klambi Bali, Denpasar), mata uang
 ## Cerita bisnis (yang bisa dituturkan)
 | Bulan | Omzet DPP | Yang terjadi |
 |---|---|---|
-| Juli | ±Rp 227 jt | Saldo awal 30 Jun. Order B2B besar (reseller & korporat seragam) mendongkrak bulan pertama; laba ±Rp 20 jt. |
-| Agustus | ±Rp 254 jt | 17-an. Mulai host live TikTok + iklan marketplace naik; biaya naik lebih cepat dari omzet → laba menipis (±Rp 10 jt). |
+| Juli | ±Rp 227 jt | Saldo awal 30 Jun. Order B2B besar (reseller & korporat seragam) mendongkrak bulan pertama; laba ±Rp 19 jt. |
+| Agustus | ±Rp 254 jt | 17-an. Mulai host live TikTok + iklan marketplace naik; biaya naik lebih cepat dari omzet → laba menipis (±Rp 8 jt). |
 | September | ±Rp 299 jt | 9.9 + TikTok Live ramai; harga kain naik 8% mulai 1 Sep menekan margin; opname 30 Sep (selisih stok). |
 | Oktober (s.d. 17) | ±Rp 190 jt | Hari Batik 2 Okt, 10.10; denda keterlambatan kirim Shopee; PPh 22 marketplace **belum berlaku** (ditunda s.d. 1 Nov 2026). |
 
@@ -21,7 +21,8 @@ margin tipis setelah iklan + host + komisi afiliasi; Shopee sehat; Tokopedia & I
 2. **Rantai pasok ringan** – *Pembelian*: PO kain/aksesori → *Inventaris*: Penerimaan → **Sortase (QC)** → Stok Utama; PO penjahit (subkontrak) →
    Resupply Subkontraktor → MO subkontrak → barang jadi diterima. Edge case: penjahit terlambat, penerimaan parsial, 23 pcs reject QC (scrap).
    Transfer internal Senin/Kamis: Stok Utama → **Marketplace** dan → **Toko Denpasar**.
-3. **HPP & costing** – kategori: Batik Tulis = FIFO, lainnya AVCO; buka satu penerimaan → jurnal valuasi; HPP per SKU tercermin di laba kotor (±47–52%).
+2b. **Produksi jahit & HPP per batch** (±8 menit) – menu *Produksi Jahit*: Batch Produksi (buka satu batch: tanggal, bahan diserahkan vs terpakai vs susut, tab HPP & Inspeksi QC) → Saldo Bahan di Penjahit → Inspeksi QC → Analisis HPP Batch (bandingkan penjahit). Skrip lengkap: [`PRODUKSI_JAHIT.md`](PRODUKSI_JAHIT.md).
+3. **HPP & costing** – kategori: Batik Tulis = FIFO, lainnya AVCO; buka satu penerimaan → jurnal valuasi; HPP per SKU tercermin di laba kotor (±44–48%).
 4. **Toko (POS)** – arus uang terbesar: tunai (selisih kas kecil saat setoran) + QRIS/EDC → settlement bank; tunjukkan jurnal `KTOK`, `QRIS`, setoran (`STJ`).
 5. **Settlement marketplace** – jurnal `SETL`: escrow gross → bank net, komisi, biaya layanan, PPN masukan atas fee, denda.
 6. **Profit per channel** – MIS Builder *Laba Rugi per channel* (kolom = channel) atau *Akuntansi → Pelaporan → Analytic*; bahas TikTok vs Shopee vs B2B.

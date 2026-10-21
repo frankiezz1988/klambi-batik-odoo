@@ -6,7 +6,7 @@ bukan ID), lalu `scripts/verify/compare_snapshots.py` membandingkan dua snapshot
 
 Semuanya **read-only** (hanya SELECT + baca ORM); aman dijalankan di instance demo.
 
-## Isi snapshot (45 dataset)
+## Isi snapshot (49 dataset)
 | Kelompok | Dataset |
 |---|---|
 | Konfigurasi | `company`, `currencies_active`, `accounts`, `journals`, `taxes`, `analytic_accounts`, `sequences`, `users`, `modules`, `init_marks`, `config_env` |
@@ -14,6 +14,7 @@ Semuanya **read-only** (hanya SELECT + baca ORM); aman dijalankan di instance de
 | Akuntansi | `moves`, `move_lines`, `payments`, `bank_statement_lines`, `trial_balance`, `trial_balance_monthly`, `pl_by_analytic`, `aging`, `assets`, `asset_lines`, `budget_items`, `mis_report_kpis` |
 | Penjualan/Pembelian | `sale_orders`, `sale_lines`, `purchase_orders`, `purchase_lines` |
 | Gudang/Produksi | `pickings`, `stock_moves`, `stock_quants`, `valuation`, `mrp_productions`, `scraps` |
+| Produksi jahit (addon `batik_id_production`) | `prod_batches` (HPP, qty, margin per batch), `prod_batch_materials` (diserahkan/terpakai/susut), `qc_inspections`, `qc_findings` |
 | Payroll & audit | `payroll_runs`, `payroll_lines`, `auditlog_rules`, `auditlog_summary` |
 | Ringkasan | `kpi` (74 angka kunci: omzet per bulan/channel, laba rugi, saldo akun, dokumen), `table_counts` (jumlah baris tiap tabel bisnis), `filestore_integrity` (lampiran/foto di DB benar-benar ada di filestore) |
 | Volatil (hanya diagnostik) | `config_env`, `table_counts_volatile` (sesi, cron, cache asset web, log) — tidak dihitung sebagai selisih |
@@ -72,6 +73,14 @@ tidak ter-extract atau volume `/var/lib/odoo` terhapus).
 ## Pemeriksaan konsistensi internal
 Dataset `kpi` memuat total debit = total kredit, dan ringkasan dokumen. Selain itu bandingkan angka rujukan di
 [`DEMO_SCOPE_AND_SCENARIOS.md`](DEMO_SCOPE_AND_SCENARIOS.md) (Bagian 4) dengan layar Odoo.
+
+## Pengecualian otomatis (sejak v5)
+`compare_snapshots.py` tidak lagi menggagalkan perbandingan karena hal yang wajar berbeda antar instance:
+- `table_counts`: baris untuk **tabel sistem** (daftar `SYSTEM_TABLE_PREFIX` di skrip: katalog modul `ir_module_*`, `ir_model_data`, jejak audit akses, wizard sementara, bus, digest, discuss, mail, dst) diabaikan; jumlah yang diabaikan dicetak di kolom status. Tabel bisnis (mis. `res_partner`, `account_move`) tetap dinilai.
+- `auditlog_summary`: hanya informasi (cermin aktivitas pengguna, mis. satu perubahan partner saat login/ubah profil).
+- `--strict`: menonaktifkan semua pengecualian di atas (bila ingin perbandingan paling ketat).
+Contoh nyata (20 Okt 2026): Railway vs referensi → semua dataset bisnis identik; selisih hanya di dua dataset di atas. Tabel sistem baru yang ternyata muncul sebagai selisih dapat ditambahkan ke `SYSTEM_TABLE_PREFIX` setelah diperiksa.
+
 
 ## Memperbarui referensi
 Bila dump diganti, buat ulang referensi dari hasil **restore** dump itu (bukan dari database sumber), agar mencakup uji restore:

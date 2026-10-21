@@ -1,0 +1,11 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_btk_batch_user,btk.prod.batch user,model_btk_prod_batch,stock.group_stock_user,1,1,1,0
+access_btk_batch_mgr,btk.prod.batch mgr,model_btk_prod_batch,stock.group_stock_manager,1,1,1,1
+access_btk_batch_mat_user,btk.prod.batch.material user,model_btk_prod_batch_material,stock.group_stock_user,1,1,1,0
+access_btk_batch_mat_mgr,btk.prod.batch.material mgr,model_btk_prod_batch_material,stock.group_stock_manager,1,1,1,1
+access_btk_qc_user,btk.qc.inspection user,model_btk_qc_inspection,stock.group_stock_user,1,1,1,0
+access_btk_qc_mgr,btk.qc.inspection mgr,model_btk_qc_inspection,stock.group_stock_manager,1,1,1,1
+access_btk_qc_line_user,btk.qc.inspection.line user,model_btk_qc_inspection_line,stock.group_stock_user,1,1,1,1
+access_btk_qc_line_mgr,btk.qc.inspection.line mgr,model_btk_qc_inspection_line,stock.group_stock_manager,1,1,1,1
+access_btk_qc_defect_user,btk.qc.defect user,model_btk_qc_defect,stock.group_stock_user,1,0,0,0
+access_btk_qc_defect_mgr,btk.qc.defect mgr,model_btk_qc_defect,stock.group_stock_manager,1,1,1,1

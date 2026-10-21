@@ -8,7 +8,7 @@ CORE="account,l10n_id,sale_management,purchase,stock,stock_account,stock_landed_
 EXTRA=(batik_id_tax batik_id_coretax batik_id_payroll auditlog account_financial_report account_tax_balance
   partner_statement mis_builder mis_builder_cash_flow account_analytic_required account_invoice_constraint_chronology
   account_journal_lock_date account_lock_date_update account_fiscal_year account_move_template report_xlsx
-  account_asset_management mis_builder_budget account_statement_base account_reconcile_oca account_statement_import_file batik_id_verify)
+  account_asset_management mis_builder_budget account_statement_base account_reconcile_oca account_statement_import_file batik_id_verify batik_id_production)
 t0=$(date +%s)
 echo "[1] base $(date +%T)"
 odoo -d $DB -i base --stop-after-init --without-demo=true --load-language=id_ID > p2_base.txt 2>&1 || echo "BASE GAGAL"

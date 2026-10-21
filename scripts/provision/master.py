@@ -164,6 +164,7 @@ class Master:
             t = Tmpl.search([("default_code", "=", sku)], limit=1)
             if not t:
                 vals = {"name": name, "default_code": sku, "type": "consu", "is_storable": True, "categ_id": categ[cat],
+                        "tracking": "lot",          # batch produksi = lot (ditelusuri sampai penjualan)
                         "list_price": price, "standard_price": cost, "sale_ok": True, "purchase_ok": True,
                         "seller_ids": [(0, 0, {"partner_id": tid, "price": round(jahit * (1.0 if k else 1.0) * (1.04 if k == 3 else 1.0)), "min_qty": 0})
                                        for k, tid in enumerate(self.out["tailors"])]}
@@ -197,6 +198,9 @@ class Master:
         else:
             lc = Tmpl.create({"name": "Ongkos Angkut Pembelian", "type": "service", "list_price": 0, "sale_ok": False, **lc_vals})
         self.out["lc_product"] = lc.product_variant_id.id
+        if not Tmpl.search([("default_code", "=", "SV-POT-QC")], limit=1):
+            Tmpl.create({"name": "Potongan Upah Reject QC", "default_code": "SV-POT-QC", "type": "service", "list_price": 0,
+                         "sale_ok": False, "purchase_ok": True})
         self.out["made_cost"] = made_cost
         print(f"Produk: {len(C.RAW)} bahan baku, {len(C.MADE)} buatan sendiri (BoM subkontrak), {len(C.BOUGHT)} beli jadi; {n_img} foto dibuat")
 

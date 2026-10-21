@@ -53,6 +53,7 @@ data/coa_retail_batik.csv          CoA retail overlay (edit CSV → jalankan ula
 custom_addons/batik_id_tax/        NSFP / kode transaksi / DPP nilai lain / NPWP-NIK pembeli / faktur cetak
 custom_addons/batik_id_coretax/    impor NSFP, ekspor Excel/XML Coretax (XML EKSPERIMENTAL, belum diverifikasi)
 custom_addons/batik_id_payroll/    karyawan, PPh 21 TER, BPJS, jurnal gaji
+custom_addons/batik_id_production/ batch produksi jahit (lot), QC, HPP per batch, saldo bahan di penjahit (lihat docs/PRODUKSI_JAHIT.md)
 deploy/                            compose.vps.yml (+cloudflared), deploy.sh, ops (backup/restore)
 docs/RAILWAY.md                    demo di Railway (jalur utama), subdomain Cloudflare
 deploy/railway/                    Dockerfile (kode di-bake), entrypoint, init bertahap

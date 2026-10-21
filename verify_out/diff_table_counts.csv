@@ -1,0 +1,17 @@
+jenis,kunci,kolom,sandbox,railway
+beda_nilai,account_move_reversal_move,rows,28,0
+beda_nilai,account_move_reversal_new_move,rows,28,0
+beda_nilai,account_payment_register_move_line_rel,rows,1237,0
+beda_nilai,auditlog_http_request,rows,0,1
+beda_nilai,auditlog_http_session,rows,0,1
+beda_nilai,auditlog_log,rows,66,67
+beda_nilai,auditlog_log_line,rows,732,733
+beda_nilai,digest_tip_res_users_rel,rows,0,4
+beda_nilai,discuss_channel,rows,2,3
+beda_nilai,discuss_channel_member,rows,5,7
+beda_nilai,ir_model_data,rows,28084,28125
+beda_nilai,ir_module_category,rows,108,119
+beda_nilai,ir_module_module,rows,857,887
+beda_nilai,ir_module_module_dependency,rows,1659,1716
+beda_nilai,res_lang_install_rel,rows,1,0
+beda_nilai,stock_quant,rows,169,146

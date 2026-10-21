@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_btk_qc_list" model="ir.ui.view">
+    <field name="name">btk.qc.inspection.list</field>
+    <field name="model">btk.qc.inspection</field>
+    <field name="arch" type="xml">
+      <list decoration-danger="result == 'fail'" decoration-warning="result == 'conditional'">
+        <field name="name"/>
+        <field name="date"/>
+        <field name="batch_id"/>
+        <field name="tailor_id"/>
+        <field name="product_id"/>
+        <field name="qty_received" sum="Total"/>
+        <field name="qty_checked" sum="Total"/>
+        <field name="qty_reject" sum="Total"/>
+        <field name="qty_rework" sum="Total"/>
+        <field name="result" widget="badge"/>
+        <field name="state" widget="badge"/>
+      </list>
+    </field>
+  </record>
+  <record id="view_btk_qc_form" model="ir.ui.view">
+    <field name="name">btk.qc.inspection.form</field>
+    <field name="model">btk.qc.inspection</field>
+    <field name="arch" type="xml">
+      <form>
+        <header>
+          <button name="action_done" type="object" string="Selesaikan QC" class="btn-primary" invisible="state != 'draft'"/>
+          <button name="action_cancel" type="object" string="Batal" invisible="state != 'draft'"/>
+          <field name="state" widget="statusbar" statusbar_visible="draft,done"/>
+        </header>
+        <sheet>
+          <div class="oe_title"><h1><field name="name"/></h1></div>
+          <group>
+            <group>
+              <field name="batch_id" readonly="state != 'draft'"/>
+              <field name="picking_id" readonly="state != 'draft'"/>
+              <field name="date" readonly="state != 'draft'"/>
+              <field name="inspector_id"/>
+            </group>
+            <group>
+              <field name="qty_received" readonly="state != 'draft'"/>
+              <field name="qty_checked" readonly="state != 'draft'"/>
+              <field name="qty_reject"/>
+              <field name="qty_rework"/>
+              <field name="qty_pass"/>
+              <field name="result"/>
+              <field name="scrap_id"/>
+            </group>
+          </group>
+          <field name="line_ids" readonly="state != 'draft'">
+            <list editable="bottom">
+              <field name="defect_id"/>
+              <field name="qty"/>
+              <field name="disposition"/>
+            </list>
+          </field>
+          <field name="note" placeholder="Catatan inspeksi..."/>
+        </sheet>
+      </form>
+    </field>
+  </record>
+  <record id="view_btk_qc_search" model="ir.ui.view">
+    <field name="name">btk.qc.inspection.search</field>
+    <field name="model">btk.qc.inspection</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="name"/>
+        <field name="batch_id"/>
+        <field name="tailor_id"/>
+        <filter name="f_draft" string="Belum selesai" domain="[('state', '=', 'draft')]"/>
+        <filter name="f_rej" string="Ada reject" domain="[('qty_reject', '&gt;', 0)]"/>
+        <group>
+          <filter name="g_tailor" string="Penjahit" context="{'group_by': 'tailor_id'}"/>
+          <filter name="g_month" string="Bulan" context="{'group_by': 'date:month'}"/>
+          <filter name="g_result" string="Hasil" context="{'group_by': 'result'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
+  <record id="view_btk_qc_pivot" model="ir.ui.view">
+    <field name="name">btk.qc.inspection.pivot</field>
+    <field name="model">btk.qc.inspection</field>
+    <field name="arch" type="xml">
+      <pivot string="Performa QC per penjahit">
+        <field name="tailor_id" type="row"/>
+        <field name="date" interval="month" type="col"/>
+        <field name="qty_checked" type="measure"/>
+        <field name="qty_reject" type="measure"/>
+        <field name="qty_rework" type="measure"/>
+      </pivot>
+    </field>
+  </record>
+  <record id="action_btk_qc" model="ir.actions.act_window">
+    <field name="name">Inspeksi QC</field>
+    <field name="res_model">btk.qc.inspection</field>
+    <field name="view_mode">list,form,pivot</field>
+    <field name="search_view_id" ref="view_btk_qc_search"/>
+  </record>
+
+  <record id="view_btk_qc_line_list" model="ir.ui.view">
+    <field name="name">btk.qc.inspection.line.list</field>
+    <field name="model">btk.qc.inspection.line</field>
+    <field name="arch" type="xml">
+      <list create="0" edit="0">
+        <field name="inspection_id"/>
+        <field name="defect_id"/>
+        <field name="qty" sum="Total"/>
+        <field name="disposition"/>
+      </list>
+    </field>
+  </record>
+  <record id="view_btk_qc_line_pivot" model="ir.ui.view">
+    <field name="name">btk.qc.inspection.line.pivot</field>
+    <field name="model">btk.qc.inspection.line</field>
+    <field name="arch" type="xml">
+      <pivot string="Cacat per jenis">
+        <field name="defect_id" type="row"/>
+        <field name="disposition" type="col"/>
+        <field name="qty" type="measure"/>
+      </pivot>
+    </field>
+  </record>
+  <record id="action_btk_qc_line" model="ir.actions.act_window">
+    <field name="name">Analisis Cacat</field>
+    <field name="res_model">btk.qc.inspection.line</field>
+    <field name="view_mode">pivot,list</field>
+  </record>
+
+  <record id="view_btk_defect_list" model="ir.ui.view">
+    <field name="name">btk.qc.defect.list</field>
+    <field name="model">btk.qc.defect</field>
+    <field name="arch" type="xml">
+      <list editable="bottom"><field name="code"/><field name="name"/><field name="active" column_invisible="True"/></list>
+    </field>
+  </record>
+  <record id="action_btk_defect" model="ir.actions.act_window">
+    <field name="name">Jenis Cacat QC</field>
+    <field name="res_model">btk.qc.defect</field>
+    <field name="view_mode">list</field>
+  </record>
+</odoo>

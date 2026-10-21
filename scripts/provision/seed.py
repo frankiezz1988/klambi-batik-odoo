@@ -51,6 +51,8 @@ class Seeder:
         self.PT = r["m_partners"]
         self.pool = r["m_pool"]
         self.rng = random.Random(C.SEED + 77)
+        self.rng_prod = random.Random(C.SEED + 991)         # acak khusus produksi/QC (tidak mengganggu urutan acak penjualan)
+        self._deduct_prod = None
         self.q, self._seq = [], 0
         self.f = None
         self.cur = C.START
@@ -149,6 +151,21 @@ class Seeder:
         for mv in picking.move_ids:
             want = mv.product_uom_qty if qtys is None else qtys.get(mv.product_id.id, 0)
             mv.quantity = want
+        self._lot_fallback(picking)
+
+    def _lot_fallback(self, picking):
+        """Barang berlot: baris tanpa lot (stok kurang dari permintaan) diberi lot terbaru yang ada, agar validasi tidak gagal."""
+        if picking.picking_type_code == "incoming":
+            return
+        for mv in picking.move_ids.filtered(lambda m: m.product_id.tracking == "lot"):
+            for ml in mv.move_line_ids.filtered(lambda l: not l.lot_id and not l.lot_name):
+                # utamakan lot tertua yang masih ada stoknya di lokasi asal (FIFO); bila tak ada, lot terbaru
+                qt = self.env["stock.quant"].search([("product_id", "=", mv.product_id.id), ("location_id", "child_of", mv.location_id.id),
+                                                     ("quantity", ">", 0), ("lot_id", "!=", False)], order="lot_id, id", limit=1)
+                lot = qt.lot_id or self.env["stock.lot"].search([("product_id", "=", mv.product_id.id)], order="id desc", limit=1)
+                if lot:
+                    ml.lot_id = lot
+                    self.stats["lot_fallback"] += 1
 
     def nsfp(self, d, vendor=False):
         self.nsfp_seq += 1
@@ -175,8 +192,8 @@ class Seeder:
     # ------------------------------------------------------------------ pembayaran
     def pay_now(self, move, jcode, amount=None, date=None):
         move = move.exists()
-        if not move or move.payment_state in ("paid", "in_payment") or move.state != "posted":
-            return None
+        if not move or move.payment_state in ("paid", "in_payment", "reversed") or move.state != "posted" or move.currency_id.is_zero(move.amount_residual):
+            return None                 # sudah lunas / sudah dikoreksi retur (credit note) / tidak ada sisa
         ctx = dict(active_model="account.move", active_ids=move.ids)
         vals = {"payment_date": date or self.cur, "journal_id": self.jr[jcode]}
         if amount:
@@ -195,7 +212,13 @@ class Seeder:
         n = 0
         for (loc, sku), q in fg.items():
             if q > 0:
-                Q.create({"product_id": self.PRD[sku], "location_id": self.loc_ids[loc], "inventory_quantity": q}).action_apply_inventory()
+                qv = {"product_id": self.PRD[sku], "location_id": self.loc_ids[loc], "inventory_quantity": q}
+                prod = env["product.product"].browse(self.PRD[sku])
+                if prod.tracking == "lot":
+                    lot = env["stock.lot"].search([("name", "=", "STOK-AWAL-" + sku), ("product_id", "=", prod.id)], limit=1) or \
+                        env["stock.lot"].create({"name": "STOK-AWAL-" + sku, "product_id": prod.id})
+                    qv["lot_id"] = lot.id
+                Q.create(qv).action_apply_inventory()
                 n += 1
         for sku, q in rm.items():
             Q.create({"product_id": self.RAW[sku], "location_id": self.loc_ids["MAIN"], "inventory_quantity": q}).action_apply_inventory()
@@ -288,7 +311,10 @@ class Seeder:
         po.button_confirm()
         # kirim bahan baku ke penjahit (resupply subkontraktor)
         for pk in env["stock.picking"].search([("origin", "ilike", po.name), ("picking_type_id.name", "ilike", "Resupply"), ("state", "not in", ("done", "cancel"))]):
-            self.fill(pk)
+            pk.action_assign()
+            for mv in pk.move_ids:        # kain dikirim dengan buffer (sisa tetap di penjahit; susut dilaporkan saat QC)
+                f = C.CLOTH_BUFFER if (mv.product_id.default_code or "").startswith("RM-KAIN") else 1.0
+                mv.quantity = round(mv.product_uom_qty * f, 2)
             self.validate(pk)
         self.stats["po_tailor"] += 1
         for rd, rl in recv.items():
@@ -308,6 +334,10 @@ class Seeder:
                 qmap[self.PRD[sku]] += q
         self.fill(picks, dict(qmap) if qmap else None)
         self.validate(picks)
+        if kind == "tailor":      # tagihan jahit dibuat setelah QC (ada potongan upah reject): lihat h_sortase
+            self.push(S.workday(self.cur + dt.timedelta(days=1)), "sortase", picks=picks.ids, rejects={},
+                      tailor=dict(po=po.id, vendor=vendor, pkp=pkp, rows=[list(r) for r in (rows or [])]))
+            return
         # tagihan pemasok (menurut qty diterima)
         po.action_create_invoice()
         bill = po.invoice_ids.filtered(lambda b: b.state == "draft")[:1]
@@ -325,10 +355,98 @@ class Seeder:
                 rjs[self.PRD[sku]] += rj
         self.push(S.workday(self.cur + dt.timedelta(days=1)), "sortase", picks=picks.ids, rejects=dict(rjs))
 
-    def h_sortase(self, picks, rejects):
+    def _deduct_product(self):
+        if self._deduct_prod is None:
+            self._deduct_prod = self.env["product.product"].search([("default_code", "=", "SV-POT-QC")], limit=1).id
+        return self._deduct_prod
+
+    def _pick_defects(self, n, weights=None):
+        """Bagi n pcs ke jenis cacat (deterministik, rng_prod)."""
+        W = weights or C.QC_DEFECT_WEIGHTS
+        cnt = defaultdict(int)
+        for _ in range(int(n)):
+            r, acc_ = self.rng_prod.uniform(0, sum(w for _c, w in W)), 0
+            for code, w in W:
+                acc_ += w
+                if r <= acc_:
+                    cnt[code] += 1
+                    break
+        return cnt
+
+    def qc_and_bill(self, picks, info):
+        """Inspeksi QC di Sortase per batch (reject -> scrap berlot, rework dicatat), susut kain dilaporkan penjahit,
+        lalu tagihan penjahit dibuat dengan potongan upah reject."""
+        env = self.env
+        po = env["purchase.order"].browse(info["po"])
+        vendor, pkp = info["vendor"], info["pkp"]
+        defect = {d.code: d.id for d in env["btk.qc.defect"].search([])}
+        byprod = {}
+        for sku, q, rj in info["rows"]:
+            v = byprod.setdefault(self.PRD[sku], [0, 0])
+            v[0] += q
+            v[1] += rj
+        Batch = env["btk.prod.batch"]
+        ga = self.ana.get("CC:Gudang & Produksi")
+        ded_lines = []
+        sub_loc = env.company.subcontracting_location_id
+        for pid, (q, rj) in byprod.items():
+            b = Batch.search([("purchase_id", "=", po.id), ("product_id", "=", pid)], limit=1)
+            if not b:
+                continue
+            rew = int(round(max(q - rj, 0) * self.rng_prod.choice(C.TAILOR_REWORK.get(vendor, (0, 0.02, 0.04)))))
+            lines = []
+            for code, n in sorted(self._pick_defects(rj).items()):
+                lines.append((0, 0, {"defect_id": defect[code], "qty": n, "disposition": "reject"}))
+            for code, n in sorted(self._pick_defects(rew, (("JHT", 50), ("NDA", 30), ("LBL", 20))).items()):
+                lines.append((0, 0, {"defect_id": defect[code], "qty": n, "disposition": "rework"}))
+            qc = env["btk.qc.inspection"].create({"batch_id": b.id, "picking_id": picks[:1].id, "qty_received": q, "qty_checked": q, "line_ids": lines,
+                                                  "inspector_id": self.qc_user()})
+            qc.action_done()
+            self.stats["qc_insp"] += 1
+            self.stats["reject_pcs"] += rj
+            self.stats["rework_pcs"] += rew
+            # susut kain dilaporkan penjahit (proporsional dengan qty diterima)
+            mean = C.TAILOR_WASTE.get(vendor, 0.025)
+            w = min(max(self.rng_prod.gauss(mean, 0.006), 0.005), 0.05)
+            for m in b.material_ids.filtered(lambda x: (x.product_id.default_code or "").startswith("RM-KAIN")):
+                qty = round(m.qty_per_unit * q * w, 2)
+                if qty > 0:
+                    sc = env["stock.scrap"].create({"product_id": m.product_id.id, "scrap_qty": qty, "location_id": sub_loc.id,
+                                                    "origin": f"Susut kain {b.name}", "btk_batch_id": b.id})
+                    sc.action_validate()
+                    self.stats["waste_m"] += qty
+            if rj:
+                fee = b.purchase_line_id.price_unit
+                ded_lines.append((b.name, rj, rp(rj * fee)))
+        # tagihan penjahit (menurut qty diterima) + potongan upah reject
+        po.action_create_invoice()
+        bill = po.invoice_ids.filtered(lambda x: x.state == "draft")[:1]
+        if bill and ded_lines:
+            tf = [(6, 0, ([self.tax["ppn_in"]] if pkp else []) + [self.tax["pph23"]])]
+            for name, n, amt in ded_lines:
+                v = {"product_id": self._deduct_product(), "name": f"Potongan upah reject QC {name} ({n} pcs)", "quantity": 1,
+                     "price_unit": -amt, "account_id": self.acc["cogs_adjust"], "tax_ids": tf}
+                if ga:
+                    v["analytic_distribution"] = {str(ga): 100}
+                bill.write({"invoice_line_ids": [(0, 0, v)]})
+                self.stats["deduct_idr"] += amt
+        if bill:
+            self.post_bill(bill, self.cur, f"INV-{vendor.split()[0][:4].upper()}-{self.cur:%y%m%d}-{po.id}", pkp)
+
+    def qc_user(self):
+        if not hasattr(self, "_qc_uid"):
+            u = self.env["res.users"].search([("login", "ilike", "kasir")], limit=1) or self.env.user
+            self._qc_uid = u.id
+        return self._qc_uid
+
+    def h_sortase(self, picks, rejects, tailor=None):
         env = self.env
         P_ = env["stock.picking"].browse(picks)
+        # pengambilan picking Storage harus SEBELUM QC: scrap reject berlot memutus tautan move_orig/move_dest
+        # (penerimaan -> storage) sehingga picking Storage tidak ditemukan lagi dan tertinggal belum divalidasi.
         stor = P_.move_ids.move_dest_ids.picking_id.filtered(lambda p: p.state not in ("done", "cancel"))
+        if tailor:
+            self.qc_and_bill(P_, tailor)
         for pid, q in rejects.items():
             sc = env["stock.scrap"].create({"product_id": pid, "scrap_qty": q, "location_id": self.W["main_input"],
                                             "origin": "Reject QC Sortase (jahitan cacat)"})
@@ -339,6 +457,8 @@ class Seeder:
             for mv in p.move_ids:
                 mv.quantity = mv.quantity or 0
             self.validate(p, no_backorder_ids=p.ids)
+            if p.state != "done":
+                raise RuntimeError(f"Storage {p.name} tidak selesai (state={p.state})")
 
     # ------------------------------------------------------------------ transfer ke toko / marketplace
     def h_transfer(self, loc, lines):
@@ -486,8 +606,10 @@ class Seeder:
         if not o.get("ret_restock", True):          # barang cacat -> reject (scrap)
             for mv in ret.move_ids:
                 loc = mv.location_dest_id.id
-                sc = env["stock.scrap"].create({"product_id": mv.product_id.id, "scrap_qty": mv.quantity, "location_id": loc,
-                                                "origin": f"Retur {order} - barang cacat"})
+                sv = {"product_id": mv.product_id.id, "scrap_qty": mv.quantity, "location_id": loc, "origin": f"Retur {order} - barang cacat"}
+                if mv.product_id.tracking == "lot":
+                    sv["lot_id"] = mv.move_line_ids.lot_id[:1].id
+                sc = env["stock.scrap"].create(sv)
                 sc.action_validate()
             self.stats["return_reject"] += 1
         rev = env["account.move.reversal"].with_context(active_model="account.move", active_ids=inv.ids).create(
@@ -693,8 +815,11 @@ class Seeder:
         Q = env["stock.quant"].with_context(inventory_mode=True)
         n = 0
         for sku, delta in (("BC-KMJ-001", -2), ("BP-KMJ-001", -3), ("AK-SCF-001", +1), ("BT-DRS-001", -1)):
-            q = env["stock.quant"].search([("product_id", "=", self.PRD[sku]), ("location_id", "=", self.W["main_stock"])], limit=1)
-            if q and q.quantity + delta >= 0:
+            q = env["stock.quant"].search([("product_id", "=", self.PRD[sku]), ("location_id", "=", self.W["main_stock"]),
+                                           ("quantity", ">", 0)], order="lot_id, id", limit=1)
+            tot = sum(env["stock.quant"].search([("product_id", "=", self.PRD[sku]), ("location_id", "=", self.W["main_stock"])]).mapped("quantity"))
+            # selisih negatif hanya pada SKU yang stoknya longgar (>= 25 pcs) agar penjualan/transfer sesudahnya tidak membuat stok negatif
+            if q and q.quantity + delta >= 0 and (delta > 0 or tot >= 25):
                 q.with_context(inventory_mode=True).write({"inventory_quantity": q.quantity + delta})
                 q.action_apply_inventory()
                 n += 1
@@ -827,6 +952,9 @@ class Seeder:
 
     # ------------------------------------------------------------------ audit, pengguna, keras
     def finalize(self):
+        B = self.env["btk.prod.batch"].search([])
+        B.action_recompute()
+        print(f"Batch produksi: {len(B)} (lot), inspeksi QC: {self.env['btk.qc.inspection'].search_count([])}")
         env = self.env
         self.at(C.END, 17, 30)
         if "auditlog.rule" in env:

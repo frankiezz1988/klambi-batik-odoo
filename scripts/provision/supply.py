@@ -216,7 +216,7 @@ def plan_week(d, skus, stock, raw, incoming, rm_incoming, dem, need, ev, rng, st
     for t, lines in tailor_lines.items():
         for sku, q in lines:
             m = MADE[sku]
-            need_rm[m["cloth"]] += m["meters"] * q
+            need_rm[m["cloth"]] += m["meters"] * q * C.CLOTH_BUFFER
             need_rm["RM-ACC-SET"] += m["acc"] * q
     rm_by_vendor = defaultdict(list)
     for r, req in need_rm.items():
@@ -249,7 +249,7 @@ def plan_week(d, skus, stock, raw, incoming, rm_incoming, dem, need, ev, rng, st
                     _USED.add(key)
                     part = p
                     break
-            rej_total = int(round(q * rng.choice([0, 0, 0.01, 0.02, 0.03]))) if q >= 12 else 0
+            rej_total = int(round(q * rng.choice(C.TAILOR_REJECT.get(t, (0, 0, 0.01, 0.02, 0.03))))) if q >= 12 else 0
             if part:
                 first = int(round(q * part[2]))
                 recv_lines[base].append((sku, first, 0))

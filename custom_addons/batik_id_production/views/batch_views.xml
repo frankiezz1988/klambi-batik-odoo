@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_btk_batch_list" model="ir.ui.view">
+    <field name="name">btk.prod.batch.list</field>
+    <field name="model">btk.prod.batch</field>
+    <field name="arch" type="xml">
+      <list decoration-danger="late_days &gt; 0" decoration-muted="state == 'cancel'">
+        <field name="name"/>
+        <field name="date_po"/>
+        <field name="tailor_id"/>
+        <field name="product_id"/>
+        <field name="qty_ordered" sum="Total"/>
+        <field name="qty_received" sum="Total"/>
+        <field name="qty_reject" sum="Total"/>
+        <field name="reject_pct" optional="show"/>
+        <field name="lead_days" optional="show"/>
+        <field name="late_days" optional="hide"/>
+        <field name="net_cost" sum="Total" optional="show"/>
+        <field name="unit_cost"/>
+        <field name="planned_unit_cost" optional="show"/>
+        <field name="variance_unit" optional="show"/>
+        <field name="margin_pct" optional="show"/>
+        <field name="state" widget="badge" decoration-success="state == 'done'" decoration-warning="state in ('qc','receiving')" decoration-info="state in ('ordered','handed')"/>
+        <field name="currency_id" column_invisible="True"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="view_btk_batch_form" model="ir.ui.view">
+    <field name="name">btk.prod.batch.form</field>
+    <field name="model">btk.prod.batch</field>
+    <field name="arch" type="xml">
+      <form>
+        <header>
+          <button name="action_recompute" type="object" string="Hitung ulang" class="btn-primary"/>
+          <field name="state" widget="statusbar" statusbar_visible="ordered,handed,receiving,qc,done"/>
+        </header>
+        <sheet>
+          <div class="oe_title"><h1><field name="name"/></h1></div>
+          <group>
+            <group string="Pesanan">
+              <field name="tailor_id"/>
+              <field name="product_id"/>
+              <field name="purchase_id"/>
+              <field name="lot_id"/>
+              <field name="date_po"/>
+              <field name="date_due"/>
+            </group>
+            <group string="Waktu &amp; kuantitas">
+              <field name="date_handover"/>
+              <field name="date_first_receipt"/>
+              <field name="date_last_receipt"/>
+              <field name="lead_days"/>
+              <field name="late_days"/>
+              <field name="qty_ordered"/>
+              <field name="qty_received"/>
+              <field name="qty_pass"/>
+              <field name="qty_reject"/>
+              <field name="qty_rework"/>
+              <field name="reject_pct"/>
+              <field name="fpy_pct"/>
+            </group>
+          </group>
+          <notebook>
+            <page string="Bahan baku (serah-terima)">
+              <field name="material_ids">
+                <list>
+                  <field name="product_id"/>
+                  <field name="qty_per_unit"/>
+                  <field name="qty_std"/>
+                  <field name="qty_sent"/>
+                  <field name="qty_consumed"/>
+                  <field name="qty_waste"/>
+                  <field name="qty_balance"/>
+                  <field name="cost_consumed" sum="Total"/>
+                  <field name="cost_waste" sum="Total"/>
+                  <field name="currency_id" column_invisible="True"/>
+                </list>
+              </field>
+              <div class="text-muted">Pengiriman bahan dialokasikan proporsional ke batch dalam PO yang sama. Sisa di penjahit = diserahkan − terpakai − susut.</div>
+            </page>
+            <page string="HPP batch">
+              <group>
+                <group string="Realisasi">
+                  <field name="material_cost"/>
+                  <field name="waste_cost"/>
+                  <field name="service_cost"/>
+                  <field name="total_cost"/>
+                  <field name="service_deduction"/>
+                  <field name="net_cost"/>
+                  <field name="unit_cost"/>
+                  <field name="material_eff_pct"/>
+                </group>
+                <group string="Standar &amp; selisih">
+                  <field name="planned_material_unit"/>
+                  <field name="planned_service_unit"/>
+                  <field name="planned_unit_cost"/>
+                  <field name="variance_unit"/>
+                  <field name="variance_total"/>
+                  <field name="deduct_pct"/>
+                </group>
+              </group>
+            </page>
+            <page string="Penjualan">
+              <group>
+                <field name="qty_sold"/>
+                <field name="revenue"/>
+                <field name="cogs_batch"/>
+                <field name="margin"/>
+                <field name="margin_pct"/>
+              </group>
+            </page>
+            <page string="Inspeksi QC">
+              <field name="inspection_ids"/>
+            </page>
+          </notebook>
+        </sheet>
+      </form>
+    </field>
+  </record>
+
+  <record id="view_btk_batch_search" model="ir.ui.view">
+    <field name="name">btk.prod.batch.search</field>
+    <field name="model">btk.prod.batch</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="name"/>
+        <field name="tailor_id"/>
+        <field name="product_id"/>
+        <filter name="f_open" string="Berjalan" domain="[('state', 'in', ('ordered', 'handed', 'receiving', 'qc'))]"/>
+        <filter name="f_done" string="Selesai" domain="[('state', '=', 'done')]"/>
+        <filter name="f_late" string="Terlambat" domain="[('late_days', '&gt;', 0)]"/>
+        <filter name="f_rej" string="Ada reject" domain="[('qty_reject', '&gt;', 0)]"/>
+        <group>
+          <filter name="g_tailor" string="Penjahit" context="{'group_by': 'tailor_id'}"/>
+          <filter name="g_product" string="Produk" context="{'group_by': 'product_id'}"/>
+          <filter name="g_month" string="Bulan PO" context="{'group_by': 'date_po:month'}"/>
+          <filter name="g_state" string="Status" context="{'group_by': 'state'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
+
+  <record id="view_btk_batch_pivot" model="ir.ui.view">
+    <field name="name">btk.prod.batch.pivot</field>
+    <field name="model">btk.prod.batch</field>
+    <field name="arch" type="xml">
+      <pivot string="Analisis HPP Batch">
+        <field name="tailor_id" type="row"/>
+        <field name="date_po" interval="month" type="col"/>
+        <field name="qty_pass" type="measure"/>
+        <field name="net_cost" type="measure"/>
+        <field name="waste_cost" type="measure"/>
+        <field name="service_deduction" type="measure"/>
+        <field name="variance_total" type="measure"/>
+      </pivot>
+    </field>
+  </record>
+
+  <record id="view_btk_batch_graph" model="ir.ui.view">
+    <field name="name">btk.prod.batch.graph</field>
+    <field name="model">btk.prod.batch</field>
+    <field name="arch" type="xml">
+      <graph string="HPP per batch" type="bar">
+        <field name="tailor_id"/>
+        <field name="net_cost" type="measure"/>
+      </graph>
+    </field>
+  </record>
+
+  <record id="action_btk_batch" model="ir.actions.act_window">
+    <field name="name">Batch Produksi</field>
+    <field name="res_model">btk.prod.batch</field>
+    <field name="view_mode">list,form,pivot,graph</field>
+    <field name="search_view_id" ref="view_btk_batch_search"/>
+    <field name="context">{'search_default_f_open': 1}</field>
+  </record>
+  <record id="action_btk_batch_analysis" model="ir.actions.act_window">
+    <field name="name">Analisis HPP Batch</field>
+    <field name="res_model">btk.prod.batch</field>
+    <field name="view_mode">pivot,graph,list,form</field>
+    <field name="search_view_id" ref="view_btk_batch_search"/>
+    <field name="domain">[('qty_received', '&gt;', 0)]</field>
+  </record>
+
+  <record id="view_btk_batch_material_list" model="ir.ui.view">
+    <field name="name">btk.prod.batch.material.list</field>
+    <field name="model">btk.prod.batch.material</field>
+    <field name="arch" type="xml">
+      <list create="0" edit="0">
+        <field name="tailor_id"/>
+        <field name="batch_id"/>
+        <field name="product_id"/>
+        <field name="qty_sent" sum="Total"/>
+        <field name="qty_consumed" sum="Total"/>
+        <field name="qty_waste" sum="Total"/>
+        <field name="qty_balance" sum="Total"/>
+        <field name="cost_waste" sum="Total"/>
+        <field name="currency_id" column_invisible="True"/>
+      </list>
+    </field>
+  </record>
+  <record id="view_btk_batch_material_search" model="ir.ui.view">
+    <field name="name">btk.prod.batch.material.search</field>
+    <field name="model">btk.prod.batch.material</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="batch_id"/>
+        <field name="tailor_id"/>
+        <field name="product_id"/>
+        <group>
+          <filter name="g_tailor" string="Penjahit" context="{'group_by': 'tailor_id'}"/>
+          <filter name="g_product" string="Bahan" context="{'group_by': 'product_id'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
+  <record id="action_btk_batch_material" model="ir.actions.act_window">
+    <field name="name">Saldo Bahan di Penjahit</field>
+    <field name="res_model">btk.prod.batch.material</field>
+    <field name="view_mode">list</field>
+    <field name="search_view_id" ref="view_btk_batch_material_search"/>
+    <field name="context">{'search_default_g_tailor': 1, 'search_default_g_product': 1}</field>
+  </record>
+</odoo>

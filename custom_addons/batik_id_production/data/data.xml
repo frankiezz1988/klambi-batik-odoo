@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+  <record id="seq_btk_prod_batch" model="ir.sequence">
+    <field name="name">Batch Produksi Jahit</field>
+    <field name="code">btk.prod.batch</field>
+    <field name="prefix">BTH-%(y)s%(month)s%(day)s-</field>
+    <field name="padding">3</field>
+  </record>
+  <record id="seq_btk_qc" model="ir.sequence">
+    <field name="name">Inspeksi QC Sortase</field>
+    <field name="code">btk.qc.inspection</field>
+    <field name="prefix">QC-%(y)s%(month)s-</field>
+    <field name="padding">4</field>
+  </record>
+  <record id="defect_jahitan" model="btk.qc.defect"><field name="code">JHT</field><field name="name">Jahitan lepas / tidak rapi</field></record>
+  <record id="defect_ukuran" model="btk.qc.defect"><field name="code">UKR</field><field name="name">Ukuran tidak sesuai pola</field></record>
+  <record id="defect_motif" model="btk.qc.defect"><field name="code">MTF</field><field name="name">Motif tidak sejajar / cacat cetak</field></record>
+  <record id="defect_noda" model="btk.qc.defect"><field name="code">NDA</field><field name="name">Noda / kotor</field></record>
+  <record id="defect_aksesori" model="btk.qc.defect"><field name="code">AKS</field><field name="name">Kancing / resleting bermasalah</field></record>
+  <record id="defect_label" model="btk.qc.defect"><field name="code">LBL</field><field name="name">Label / kemasan salah</field></record>
+  <record id="cron_btk_batch_recompute" model="ir.cron">
+    <field name="name">Batch Produksi: hitung ulang HPP &amp; margin</field>
+    <field name="model_id" ref="model_btk_prod_batch"/>
+    <field name="state">code</field>
+    <field name="code">model._cron_recompute()</field>
+    <field name="interval_number">1</field>
+    <field name="interval_type">days</field>
+  </record>
+</odoo>

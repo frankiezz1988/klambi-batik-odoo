@@ -1,0 +1,3 @@
+jenis,kunci,kolom,sandbox,railway
+hanya_di_railway,web.base.url.freeze,,,web.base.url.freeze|True
+beda_nilai,web.base.url,value,http://localhost:8069,https://klambi-bali.odoo.kolondam.dev

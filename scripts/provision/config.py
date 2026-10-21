@@ -138,6 +138,19 @@ TAILORS = [
     ("Taylor Ketut Jaya", "Denpasar", False, 80, ("BC-SRB", "BP-KDS", "BP-BLS")),
     ("CV Garment Dewata", "Badung", True, 120, ("BP-KMJ", "BP-OTR", "BC-KMJ-003")),
 ]
+
+# --- Produksi jahit (subkontrak): perilaku per penjahit (dipakai planner/seed; deterministik) ---
+CLOTH_BUFFER = 1.06            # kain yang diserahkan ke penjahit = kebutuhan BoM x 1,06 (sisa tetap di penjahit)
+TAILOR_WASTE = {               # rata-rata susut kain (% dari kebutuhan standar), simpangan 0,6 poin
+    "Konveksi Ni Made Sari": 0.025, "Penjahit Bu Wayan Tabanan": 0.038,
+    "Taylor Ketut Jaya": 0.020, "CV Garment Dewata": 0.015}
+TAILOR_REJECT = {              # pilihan tingkat reject per baris penerimaan (5 pilihan; sama jumlahnya agar urutan random stabil)
+    "Konveksi Ni Made Sari": (0, 0, 0.01, 0.02, 0.03), "Penjahit Bu Wayan Tabanan": (0, 0.02, 0.03, 0.04, 0.05),
+    "Taylor Ketut Jaya": (0, 0, 0.01, 0.02, 0.03), "CV Garment Dewata": (0, 0, 0, 0.01, 0.01)}
+TAILOR_REWORK = {              # peluang rework (diperbaiki penjahit) per penerimaan
+    "Konveksi Ni Made Sari": (0, 0.02, 0.03), "Penjahit Bu Wayan Tabanan": (0.02, 0.04, 0.06),
+    "Taylor Ketut Jaya": (0, 0.02, 0.04), "CV Garment Dewata": (0, 0, 0.02)}
+QC_DEFECT_WEIGHTS = (("JHT", 34), ("UKR", 14), ("MTF", 18), ("NDA", 16), ("AKS", 12), ("LBL", 6))
 SUPPLIER_PKP = {   # nama -> (PKP?, hari tempo)
     "CV Tekstil Pekalongan Mulia": (True, 30), "PT Kain Printing Bandung Sejahtera": (True, 30),
     "UD Aksesori Jahit Denpasar": (False, 0), "Pengrajin Batik Tulis Solo": (False, 14),

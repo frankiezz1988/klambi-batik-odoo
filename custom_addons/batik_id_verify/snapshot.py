@@ -218,6 +218,42 @@ SQL_DATASETS = [
         from stock_scrap s join product_product pp on pp.id = s.product_id left join stock_location l on l.id = s.location_id
         left join stock_location ls on ls.id = s.scrap_location_id order by s.name"""),
 
+    # ---- produksi jahit (addon batik_id_production; dilewati bila addon tidak terpasang)
+    ("prod_batches", ["name"], ["btk_prod_batch"],
+     """select b.name, pp.default_code as product, tp.name as tailor, po.name as po, b.state,
+               to_char(b.date_po, 'YYYY-MM-DD') as date_po, to_char(b.date_handover, 'YYYY-MM-DD') as handover,
+               to_char(b.date_last_receipt, 'YYYY-MM-DD') as last_receipt, b.lead_days, b.late_days,
+               round(b.qty_ordered::numeric, 2) as qty_ordered, round(b.qty_received::numeric, 2) as qty_received,
+               round(b.qty_checked::numeric, 2) as qty_checked, round(b.qty_rework::numeric, 2) as qty_rework,
+               round(b.qty_reject::numeric, 2) as qty_reject, round(b.qty_pass::numeric, 2) as qty_pass,
+               round(b.qty_sold::numeric, 2) as qty_sold, round(b.material_cost::numeric, 2) as material_cost,
+               round(b.waste_cost::numeric, 2) as waste_cost, round(b.service_cost::numeric, 2) as service_cost,
+               round(b.service_deduction::numeric, 2) as service_deduction, round(b.net_cost::numeric, 2) as net_cost,
+               round(b.unit_cost::numeric, 2) as unit_cost, round(b.planned_unit_cost::numeric, 2) as planned_unit_cost,
+               round(b.revenue::numeric, 2) as revenue, round(b.cogs_batch::numeric, 2) as cogs_batch, round(b.margin::numeric, 2) as margin
+        from btk_prod_batch b join product_product pp on pp.id = b.product_id join res_partner tp on tp.id = b.tailor_id
+        join purchase_order po on po.id = b.purchase_id order by b.name"""),
+
+    ("prod_batch_materials", ["key"], ["btk_prod_batch_material", "btk_prod_batch"],
+     """select b.name || '|' || pp.default_code as key, round(m.qty_per_unit::numeric, 4) as qty_per_unit,
+               round(m.qty_std::numeric, 2) as qty_std, round(m.qty_sent::numeric, 2) as qty_sent,
+               round(m.qty_consumed::numeric, 2) as qty_consumed, round(m.qty_waste::numeric, 2) as qty_waste,
+               round(m.qty_balance::numeric, 2) as qty_balance, round(m.cost_consumed::numeric, 2) as cost_consumed,
+               round(m.cost_waste::numeric, 2) as cost_waste
+        from btk_prod_batch_material m join btk_prod_batch b on b.id = m.batch_id join product_product pp on pp.id = m.product_id order by 1"""),
+
+    ("qc_inspections", ["name"], ["btk_qc_inspection"],
+     """select q.name, b.name as batch, sp.name as picking, to_char(q.date, 'YYYY-MM-DD HH24:MI:SS') as date_utc,
+               round(q.qty_received::numeric, 2) as qty_received, round(q.qty_checked::numeric, 2) as qty_checked,
+               round(q.qty_reject::numeric, 2) as qty_reject, round(q.qty_rework::numeric, 2) as qty_rework,
+               round(q.qty_pass::numeric, 2) as qty_pass, q.result, q.state
+        from btk_qc_inspection q join btk_prod_batch b on b.id = q.batch_id left join stock_picking sp on sp.id = q.picking_id order by q.name"""),
+
+    ("qc_findings", ["key"], ["btk_qc_inspection_line", "btk_qc_inspection"],
+     """select q.name || '|' || d.code || '|' || l.disposition as key, round(sum(l.qty)::numeric, 2) as qty
+        from btk_qc_inspection_line l join btk_qc_inspection q on q.id = l.inspection_id join btk_qc_defect d on d.id = l.defect_id
+        group by 1 order by 1"""),
+
     ("payments", ["key"], ["account_payment"],
      """select ap.name || '#' || row_number() over (partition by ap.name order by ap.id) as key,
                ap.date, round(ap.amount::numeric, 2) as amount, ap.payment_type, ap.partner_type, p.name as partner, j.code as journal,
